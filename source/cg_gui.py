@@ -14,8 +14,11 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QHBoxLayout,
     QWidget,
-    QStyleOptionGraphicsItem)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon
+    QStyleOptionGraphicsItem,
+    QLabel,
+    QColorDialog,
+    QFileDialog)
+from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage
 from PyQt5.QtCore import QRectF
 
 
@@ -37,6 +40,7 @@ class MyCanvas(QGraphicsView):
         
         self.is_drawing = False
         self.setMouseTracking(True)
+        self.pen_color = QColor(0, 0, 0)
 
     def start_draw_line(self, algorithm, item_id):
         self.status = 'line'
@@ -82,16 +86,16 @@ class MyCanvas(QGraphicsView):
         y = int(pos.y())
         if self.status == 'line':
             self.is_drawing = True
-            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
+            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color, self.temp_algorithm)
             self.scene().addItem(self.temp_item)
         if self.status == 'polygon':
             if not self.is_drawing:               # start drawing
                 self.is_drawing = True
-                self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.temp_algorithm)
+                self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
         if self.status == 'ellipse':
             self.is_drawing = True
-            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]])
+            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color)
             self.scene().addItem(self.temp_item)
         # TODO: other status 
         self.updateScene([self.sceneRect()])
@@ -137,12 +141,25 @@ class MyCanvas(QGraphicsView):
         # TODO: other status
         super().mouseReleaseEvent(event)
 
+    def mycanvas_to_QImage(self):
+
+        area = self.sceneRect()
+
+        # Create image and painter to render
+        temp_image = QImage(area.width(), area.height(), QImage.Format_ARGB32_Premultiplied)
+        temp_painter = QPainter(temp_image)
+
+        # Render area to image
+        self.scene().render(temp_painter, QRectF(temp_image.rect()), area)
+        temp_painter.end()
+
+        return temp_image
 
 class MyItem(QGraphicsItem):
     """
     自定义图元类，继承自QGraphicsItem
     """
-    def __init__(self, item_id: str, item_type: str, p_list: list, algorithm: str = '', parent: QGraphicsItem = None):
+    def __init__(self, item_id: str, item_type: str, p_list: list, pen_color: QColor, algorithm: str = '', parent: QGraphicsItem = None):
         """
 
         :param item_id: 图元ID
@@ -157,11 +174,13 @@ class MyItem(QGraphicsItem):
         self.p_list = p_list        # 图元参数
         self.algorithm = algorithm  # 绘制算法，'DDA'、'Bresenham'、'Bezier'、'B-spline'等
         self.selected = False
+        self.item_pen_color = pen_color
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
         if self.item_type == 'line':
             item_pixels = alg.draw_line(self.p_list, self.algorithm)
             for p in item_pixels:
+                painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
                 painter.setPen(QColor(255, 0, 0))
@@ -169,6 +188,7 @@ class MyItem(QGraphicsItem):
         elif self.item_type == 'polygon':
             item_pixels = alg.draw_polygon(self.p_list, self.algorithm)
             for p in item_pixels:
+                painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
                 painter.setPen(QColor(255, 0, 0))
@@ -176,6 +196,7 @@ class MyItem(QGraphicsItem):
         elif self.item_type == 'ellipse':
             item_pixels = alg.draw_ellipse(self.p_list)
             for p in item_pixels:
+                painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
                 painter.setPen(QColor(255, 0, 0))
@@ -242,11 +263,13 @@ class MainWindow(QMainWindow):
         self.canvas_widget.main_window = self
         self.canvas_widget.list_widget = self.list_widget
 
+
         # 设置菜单栏
         menubar = self.menuBar()
         file_menu = menubar.addMenu('文件')
         set_pen_act = file_menu.addAction('设置画笔')
         reset_canvas_act = file_menu.addAction('重置画布')
+        save_canvas_act = file_menu.addAction('保存画布')
         exit_act = file_menu.addAction('退出')
         draw_menu = menubar.addMenu('绘制')
         line_menu = draw_menu.addMenu('线段')
@@ -270,6 +293,9 @@ class MainWindow(QMainWindow):
 
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
+        set_pen_act.triggered.connect(self.set_pen_action)
+        reset_canvas_act.triggered.connect(self.reset_canvas_action)
+        save_canvas_act.triggered.connect(self.save_canvas_action)
             # line funcs
         line_naive_act.triggered.connect(self.line_naive_action)
         line_dda_act.triggered.connect(self.line_dda_action)
@@ -292,13 +318,32 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.statusBar().showMessage('空闲')
         self.resize(600, 600)
-        self.setWindowTitle('CG Demo')
+        self.setWindowTitle('CG application - by 曾许曌秋(https://zxzq.me)')
         self.setWindowIcon(QIcon("./pics/favicon.ico"))
 
     def get_id(self):
         _id = str(self.item_cnt)
         self.item_cnt += 1
         return _id
+
+    def set_pen_action(self):
+        self.canvas_widget.pen_color = QColorDialog.getColor()
+        self.statusBar().showMessage('Pen color selected: %s' % self.canvas_widget.pen_color.name())
+
+    def reset_canvas_action(self):
+        self.scene.clear()
+        self.list_widget.clear()
+
+    def save_canvas_action(self):
+        # select savepath
+        save_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG(*.png);;JPEG(*.jpg *.jpeg);;All Files(*.*) ")
+
+        # if path is blank exit
+        if save_path == "":
+            return
+        
+        # get image and save
+        self.canvas_widget.mycanvas_to_QImage().save(save_path)
 
     def line_naive_action(self):
         self.canvas_widget.start_draw_line('Naive', self.get_id())
