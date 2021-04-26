@@ -56,6 +56,10 @@ class MyCanvas(QGraphicsView):
         self.status = 'ellipse'
         self.temp_id = item_id
 
+    def start_draw_curve(self, algorithm, item_id):
+        self.status = 'curve'
+        self.temp_algorithm = algorithm
+        self.temp_id = item_id
     
     # TODO: start_draw $other graphic$
 
@@ -88,15 +92,20 @@ class MyCanvas(QGraphicsView):
             self.is_drawing = True
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color, self.temp_algorithm)
             self.scene().addItem(self.temp_item)
-        if self.status == 'polygon':
+        elif self.status == 'polygon':
             if not self.is_drawing:               # start drawing
                 self.is_drawing = True
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
-        if self.status == 'ellipse':
+        elif self.status == 'ellipse':
             self.is_drawing = True
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color)
             self.scene().addItem(self.temp_item)
+        elif self.status == 'curve' and self.temp_algorithm == 'Bezier':
+            if not self.is_drawing:
+                self.is_drawing = True
+                self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
+                self.scene().addItem(self.temp_item)
         # TODO: other status 
         self.updateScene([self.sceneRect()])
         super().mousePressEvent(event)
@@ -107,10 +116,12 @@ class MyCanvas(QGraphicsView):
         y = int(pos.y())
         if self.status == 'line' and self.is_drawing:
             self.temp_item.p_list[1] = [x, y]
-        if self.status == 'polygon' and self.is_drawing:
+        elif self.status == 'polygon' and self.is_drawing:
             self.temp_item.p_list[-1] = [x, y]
-        if self.status == 'ellipse' and self.is_drawing:
+        elif self.status == 'ellipse' and self.is_drawing:
             self.temp_item.p_list[1] = [x, y]
+        elif self.status == 'curve' and self.temp_algorithm == 'Bezier' and self.is_drawing:
+            self.temp_item.p_list[-1] = [x, y]
         # TODO: other status
         self.updateScene([self.sceneRect()])
         super().mouseMoveEvent(event)
@@ -125,7 +136,7 @@ class MyCanvas(QGraphicsView):
             self.item_dict[self.temp_id] = self.temp_item
             self.list_widget.addItem(self.temp_id)
             self.finish_draw()
-        if self.status == 'polygon':
+        elif self.status == 'polygon':
             if self.is_drawing:
                 if flag == 2:   # right click: finish one polygon
                     self.item_dict[self.temp_id] = self.temp_item
@@ -133,11 +144,19 @@ class MyCanvas(QGraphicsView):
                     self.finish_draw()
                 else:           # other click: add vertex
                     self.temp_item.p_list.append( [x, y] )
-        if self.status == 'ellipse':
+        elif self.status == 'ellipse':
             self.is_drawing = False
             self.item_dict[self.temp_id] = self.temp_item
             self.list_widget.addItem(self.temp_id)
             self.finish_draw()
+        elif self.status == 'curve' and self.temp_algorithm == 'Bezier':
+            if self.is_drawing:
+                if flag == 2:
+                    self.item_dict[self.temp_id] = self.temp_item
+                    self.list_widget.addItem(self.temp_id)
+                    self.finish_draw()
+                else:
+                    self.temp_item.p_list.append( [x, y] )
         # TODO: other status
         super().mouseReleaseEvent(event)
 
@@ -201,9 +220,15 @@ class MyItem(QGraphicsItem):
             if self.selected:
                 painter.setPen(QColor(255, 0, 0))
                 painter.drawRect(self.boundingRect())
-        # TODO:
         elif self.item_type == 'curve':
-            pass
+            item_pixels = alg.draw_curve(self.p_list, self.algorithm)
+            for p in item_pixels:
+                painter.setPen(self.item_pen_color)
+                painter.drawPoint(*p)
+            if self.selected:
+                painter.setPen(QColor(255, 0, 0))
+                painter.drawRect(self.boundingRect())
+        # TODO:    ??
 
     def boundingRect(self) -> QRectF:
         if self.item_type == 'line':
@@ -240,8 +265,21 @@ class MyItem(QGraphicsItem):
             h = max(y0, y1) - y
             return QRectF(x - 1, y - 1, w + 2, h + 2)
         elif self.item_type == 'curve':
-            pass
-
+            all_pixels = alg.draw_curve(self.p_list, self.algorithm)
+            (xmin, ymin) = all_pixels[0]
+            (xmax, ymax) = all_pixels[0]
+            for (x, y) in all_pixels:
+                if x < xmin:
+                    xmin = x
+                if x > xmax:
+                    xmax = x
+                if y < ymin:
+                    ymin = y
+                if y > ymax:
+                    ymax = y
+            w = xmax - xmin
+            h = ymax - ymin
+            return QRectF(xmin - 1, ymin - 1, w + 2, h + 2)
 
 class MainWindow(QMainWindow):
     """
@@ -305,6 +343,8 @@ class MainWindow(QMainWindow):
         polygon_bresenham_act.triggered.connect(self.polygon_bresenham_action)
             # ellipse funcs
         ellipse_act.triggered.connect(self.ellipse_action)
+            # curve funcs
+        curve_bezier_act.triggered.connect(self.curve_bezier_action)
         # TODO: other func link
             # select funcs
         self.list_widget.currentTextChanged.connect(self.canvas_widget.selection_changed)
@@ -382,6 +422,11 @@ class MainWindow(QMainWindow):
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
+    def curve_bezier_action(self):
+        self.canvas_widget.start_draw_curve('Bezier', self.get_id())
+        self.statusBar().showMessage('Bezier曲线绘制,单击添加控制点，右键结束')
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
 
     # TODO: realise other action funcs
 

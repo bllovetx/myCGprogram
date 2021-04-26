@@ -4,13 +4,16 @@
 # 本文件只允许依赖math库
 import math
 
+bezier_steps = 1000
+
+# assist funcs
 def noswitch(x, y):
     return (x, y)
 
 def switch(x, y):
     return (y, x)
 
-# walk by a
+# func: walk by a
 def ellipse_walk(amin, amax, bmin, bmax, loc):
     resulta = []
     asum = amin + amax; da = amax - amin; da_sq = da*da
@@ -39,6 +42,15 @@ def ellipse_walk(amin, amax, bmin, bmax, loc):
         walk = (p_slope > 0)
     return resulta
 
+# func: mix point with para
+def mix_point(pA:list, pB:list, t:float):
+    assert(len(pA) == len(pB))
+    mixed = []
+    for i in range(len(pA)):
+        mixed.append(t*pA[i] + (1-t)*pB[i])
+    return mixed
+
+# algorithms
 def draw_line(p_list, algorithm):
     """绘制线段
 
@@ -137,7 +149,24 @@ def draw_curve(p_list, algorithm):
     :param algorithm: (string) 绘制使用的算法，包括'Bezier'和'B-spline'（三次均匀B样条曲线，曲线不必经过首末控制点）
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
     """
-    pass
+    result = []
+
+    if algorithm == 'Bezier':
+        if len(p_list) == 1:
+            return p_list
+        for i in range(bezier_steps):
+            t = i / bezier_steps
+            last_list = p_list
+            while len(last_list) > 1:
+                cnt_list = []
+                for j in range(len(last_list)-1):
+                    cnt_list.append(mix_point(last_list[j], last_list[j+1], t))
+                last_list = cnt_list
+            result.append(last_list[0])
+    elif algorithm == 'B-spline':
+        pass
+    return result
+
 
 
 def translate(p_list, dx, dy):
