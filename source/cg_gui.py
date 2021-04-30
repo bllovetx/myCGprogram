@@ -373,6 +373,8 @@ class MainWindow(QMainWindow):
     def reset_canvas_action(self):
         self.scene.clear()
         self.list_widget.clear()
+        self.item_cnt = 0
+        self.canvas_widget.item_dict = {}
 
     def save_canvas_action(self):
         # select savepath
