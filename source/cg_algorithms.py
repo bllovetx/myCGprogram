@@ -5,6 +5,8 @@
 import math
 
 bezier_steps = 1000
+bezier_try = 1/1000
+max_search_step = 1000
 
 # assist funcs
 def noswitch(x, y):
@@ -49,6 +51,16 @@ def mix_point(pA:list, pB:list, t:float):
     for i in range(len(pA)):
         mixed.append(t*pA[i] + (1-t)*pB[i])
     return mixed
+
+def bezier_cal(p_list, t):
+    last_list = p_list
+    while len(last_list) > 1:
+        cnt_list = []
+        for j in range(len(last_list)-1):
+            cnt_list.append(mix_point(last_list[j], last_list[j+1], t))
+        last_list = cnt_list
+    return (round(last_list[0][0]), round(last_list[0][1]))
+
 
 # algorithms
 def draw_line(p_list, algorithm):
@@ -154,15 +166,47 @@ def draw_curve(p_list, algorithm):
     if algorithm == 'Bezier':
         if len(p_list) == 1:
             return p_list
-        for i in range(bezier_steps):
-            t = i / bezier_steps
-            last_list = p_list
-            while len(last_list) > 1:
-                cnt_list = []
-                for j in range(len(last_list)-1):
-                    cnt_list.append(mix_point(last_list[j], last_list[j+1], t))
-                last_list = cnt_list
-            result.append(last_list[0])
+        t = 0
+        result.append( bezier_cal(p_list, t) )
+        (cnt_x, cnt_y) = result[-1]
+        step = bezier_try
+        do_while_flag = True
+        search_step = 0
+        last_search_state = "start"
+        factor = 2
+        while do_while_flag:
+            temp_t = t + step
+            (temp_x, temp_y) = bezier_cal(p_list, temp_t)
+            step_x = abs(temp_x - cnt_x)
+            step_y = abs(temp_y - cnt_y)
+            max_step = max(step_x, step_y)
+            if max_step > 1:    # step too large
+                if last_search_state == "small":    # flip - reduce factor
+                    factor = math.sqrt(factor)
+                step = step / factor
+                search_step = search_step + 1
+                last_search_state = "large"
+            elif max_step == 0: # step too small
+                if last_search_state == "large":    # flip - reduce factor
+                    factor = math.sqrt(factor)
+                step = step * factor
+                search_step = search_step + 1
+                last_search_state = "small"
+            elif temp_t > 1:    # suitable but out of range
+                do_while_flag = False
+            else:               # find suitable - update
+                # commit result
+                t = temp_t
+                cnt_x = temp_x
+                cnt_y = temp_y
+                result.append((cnt_x, cnt_y))
+                # init search
+                search_step = 0
+                factor = 2
+                last_search_state = "start"
+            if search_step > max_search_step:   # check dead loop
+                assert(0 and "bezier search fall into dead loop!")
+            
     elif algorithm == 'B-spline':
         pass
     return result
