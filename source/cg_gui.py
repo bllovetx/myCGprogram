@@ -375,6 +375,7 @@ class MainWindow(QMainWindow):
         self.list_widget.clear()
         self.item_cnt = 0
         self.canvas_widget.item_dict = {}
+        self.canvas_widget.temp_id = self.get_id()
 
     def save_canvas_action(self):
         # select savepath
