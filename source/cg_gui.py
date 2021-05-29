@@ -16,9 +16,14 @@ from PyQt5.QtWidgets import (
     QWidget,
     QStyleOptionGraphicsItem,
     QLabel,
+    QLineEdit,
+    QPushButton,
+    QGridLayout,
     QColorDialog,
-    QFileDialog)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage
+    QFileDialog,
+    QInputDialog,
+    QDialog)
+from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator
 from PyQt5.QtCore import QRectF
 
 
@@ -84,7 +89,7 @@ class MyCanvas(QGraphicsView):
         self.selected_id = selected
         self.item_dict[selected].selected = True
         self.item_dict[selected].update()
-        self.status = ''
+        self.status = 'select'
         self.updateScene([self.sceneRect()])
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -301,9 +306,27 @@ class MainWindow(QMainWindow):
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 600, 600)
         self.canvas_widget = MyCanvas(self.scene, self)
-        self.canvas_widget.setFixedSize(600, 600)
+        self.canvas_widget.setFixedSize(600+20, 600+20)
         self.canvas_widget.main_window = self
         self.canvas_widget.list_widget = self.list_widget
+
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #282c34;
+                color: #bbbbbb;
+            }
+        """)
+        self.list_widget.setStyleSheet("""
+            QListWidget {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                padding: 10px
+            }
+        """)
+        self.statusBar().setStyleSheet("background-color: #8897b4")
+        self.menuBar().setStyleSheet("background-color: #8897b4")
 
 
         # 设置菜单栏
@@ -375,21 +398,34 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('Pen color selected: %s' % self.canvas_widget.pen_color.name())
 
     def reset_canvas_action(self):
-        # reset window para
-        self.item_cnt = 0
-        # reset scene
-        self.scene.clear()
-        # reset list_widget
-        self.list_widget.clear()
-        # reset canvas
-        self.canvas_widget.item_dict = {}
-        self.canvas_widget.selected_id = ''
-        self.canvas_widget.status = ''
-        self.canvas_widget.temp_algorithm = ''
-        self.canvas_widget.temp_id = ''
-        self.canvas_widget.temp_item = None   
-        self.canvas_widget.is_drawing = False
-        self.canvas_widget.pen_color = QColor(0, 0, 0)
+        # reset size
+        widthHeightPara = {}
+        whDialogue = WidthHeightDialog(widthHeightPara)
+        whDialogue.exec_()
+        if widthHeightPara["confirm"] == True:
+            temp_width = int(widthHeightPara["width"])
+            temp_height = int(widthHeightPara["height"])
+            temp_color = widthHeightPara["color"]
+            self.canvas_widget.setStyleSheet(f'QWidget {{background-color: {temp_color};}}')
+            self.scene.setSceneRect(0, 0, temp_width, temp_height)
+            self.canvas_widget.setFixedSize(temp_width + 20, temp_height + 20)
+            self.resize(temp_width, temp_height)
+            self.statusBar().showMessage(f'Reset canvas to width: {temp_width}, height: {temp_height}, background Color: {temp_color}')
+            # reset window para
+            self.item_cnt = 0
+            # reset scene
+            self.scene.clear()
+            # reset list_widget
+            self.list_widget.clear()
+            # reset canvas
+            self.canvas_widget.item_dict = {}
+            self.canvas_widget.selected_id = ''
+            self.canvas_widget.status = ''
+            self.canvas_widget.temp_algorithm = ''
+            self.canvas_widget.temp_id = ''
+            self.canvas_widget.temp_item = None   
+            self.canvas_widget.is_drawing = False
+            self.canvas_widget.pen_color = QColor(0, 0, 0)
 
     def save_canvas_action(self):
         # select savepath
@@ -446,6 +482,109 @@ class MainWindow(QMainWindow):
         self.canvas_widget.clear_selection()
 
     # TODO: realise other action funcs
+
+class WidthHeightDialog(QDialog):
+    def __init__(self, para): 
+        # para = {"width": width=600, "height": height=600, "color": Hex="#ffffff", "confirm": confirm = False}      
+        super(WidthHeightDialog,self).__init__()
+
+        self.para = para
+        self.para["width"] = 600
+        self.para["height"] = 600
+        self.para["color"] = "#ffffff"
+        self.para["confirm"] = False
+        
+        # set self theme
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #282c34;
+                color: #bbbbbb;
+            }
+        """)
+        self.setWindowTitle("Reset Size of Canvas")
+        self.setWindowIcon(QIcon("./pics/favicon.ico"))
+
+        self.widthLabel = QLabel("Width: ")
+        self.heightLabel= QLabel("Height: ")
+        self.colorLabel = QLabel("Color: ")
+
+        self.widthEdit = QLineEdit()   
+        self.widthEdit.setPlaceholderText("600")
+        self.widthEdit.setValidator(QIntValidator())
+        self.widthEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px
+            }
+        """)
+        self.heightEdit = QLineEdit()   
+        self.heightEdit.setPlaceholderText("600")
+        self.heightEdit.setValidator(QIntValidator())
+        self.heightEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+        self.colorSelected = QLabel()
+        self.colorSelected.setText("#ffffff")
+        self.colorSelected.setStyleSheet("""
+            QLabel {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+
+
+        self.confirmButton = QPushButton("Confirm")
+        self.cancelButton = QPushButton("Cancel")
+        self.confirmButton.clicked.connect(self.confirm_act)
+        self.cancelButton.clicked.connect(self.cancel_act)
+        self.getColorButton = QPushButton("Select")
+        self.getColorButton.clicked.connect(self.getColor_act)
+
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.widthLabel,      0, 0)
+        mainLayout.addWidget(self.widthEdit,       0, 1, 1, 2)
+        mainLayout.addWidget(self.heightLabel,     1, 0)
+        mainLayout.addWidget(self.heightEdit,      1, 1, 1, 2)
+        mainLayout.addWidget(self.colorLabel,      2, 0)
+        mainLayout.addWidget(self.colorSelected,   2, 1)
+        mainLayout.addWidget(self.getColorButton,  2, 2)
+        mainLayout.setColumnMinimumWidth(1, 130)
+        mainLayout.setColumnMinimumWidth(2, 130)
+        mainLayout.addWidget(self.confirmButton,   3, 1)        
+        mainLayout.addWidget(self.cancelButton,    3, 2)        
+        mainLayout.setRowStretch(3, 1)
+        mainLayout.setHorizontalSpacing(15)
+        mainLayout.setVerticalSpacing(5)
+        self.setLayout(mainLayout)
+
+    def getColor_act (self):
+        self.colorSelected.setText(QColorDialog.getColor().name())
+
+    def confirm_act (self):
+        self.para["width"] = self.widthEdit.placeholderText() if (self.widthEdit.text() == '') else self.widthEdit.text()
+        self.para["height"] = self.heightEdit.placeholderText() if (self.heightEdit.text() == '') else self.heightEdit.text()
+        self.para["color"] = self.colorSelected.text()
+        self.para["confirm"] = True
+        self.close()
+
+    def cancel_act (self):
+        self.para["confirm"] = False
+        self.close()
 
 
 if __name__ == '__main__':
