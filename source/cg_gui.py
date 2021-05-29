@@ -42,26 +42,30 @@ class MyCanvas(QGraphicsView):
         self.setMouseTracking(True)
         self.pen_color = QColor(0, 0, 0)
 
-    def start_draw_line(self, algorithm, item_id):
+    def start_draw_line(self, algorithm):
         self.status = 'line'
         self.temp_algorithm = algorithm
-        self.temp_id = item_id
+        self.start_draw()
 
-    def start_draw_polygon(self, algorithm, item_id):
+    def start_draw_polygon(self, algorithm):
         self.status = 'polygon'
         self.temp_algorithm = algorithm
-        self.temp_id = item_id
+        self.start_draw()
 
-    def start_draw_ellipse(self, item_id):
+    def start_draw_ellipse(self):
         self.status = 'ellipse'
-        self.temp_id = item_id
+        self.start_draw()
 
-    def start_draw_curve(self, algorithm, item_id):
+    def start_draw_curve(self, algorithm):
         self.status = 'curve'
         self.temp_algorithm = algorithm
-        self.temp_id = item_id
+        self.start_draw()
     
     # TODO: start_draw $other graphic$
+
+    def start_draw(self):
+        if self.temp_id == '':
+            self.temp_id = self.main_window.get_id()
 
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
@@ -371,11 +375,21 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('Pen color selected: %s' % self.canvas_widget.pen_color.name())
 
     def reset_canvas_action(self):
-        self.scene.clear()
-        self.list_widget.clear()
+        # reset window para
         self.item_cnt = 0
+        # reset scene
+        self.scene.clear()
+        # reset list_widget
+        self.list_widget.clear()
+        # reset canvas
         self.canvas_widget.item_dict = {}
-        self.canvas_widget.temp_id = self.get_id()
+        self.canvas_widget.selected_id = ''
+        self.canvas_widget.status = ''
+        self.canvas_widget.temp_algorithm = ''
+        self.canvas_widget.temp_id = ''
+        self.canvas_widget.temp_item = None   
+        self.canvas_widget.is_drawing = False
+        self.canvas_widget.pen_color = QColor(0, 0, 0)
 
     def save_canvas_action(self):
         # select savepath
@@ -389,44 +403,44 @@ class MainWindow(QMainWindow):
         self.canvas_widget.mycanvas_to_QImage().save(save_path)
 
     def line_naive_action(self):
-        self.canvas_widget.start_draw_line('Naive', self.get_id())
+        self.canvas_widget.start_draw_line('Naive')
         self.statusBar().showMessage('Naive算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def line_dda_action(self):
-        self.canvas_widget.start_draw_line('DDA', self.get_id())
+        self.canvas_widget.start_draw_line('DDA')
         self.statusBar().showMessage('DDA算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def line_bresenham_action(self):
-        self.canvas_widget.start_draw_line('Bresenham', self.get_id())
+        self.canvas_widget.start_draw_line('Bresenham')
         self.statusBar().showMessage('Bresenham算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def polygon_dda_action(self):
-        self.canvas_widget.start_draw_polygon('DDA', self.get_id())
+        self.canvas_widget.start_draw_polygon('DDA')
         self.statusBar().showMessage('DDA算法绘制多边形，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def polygon_bresenham_action(self):
-        self.canvas_widget.start_draw_polygon('Bresenham', self.get_id())
+        self.canvas_widget.start_draw_polygon('Bresenham')
         self.statusBar().showMessage('Bresenham算法绘制多边形，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
 
     def ellipse_action(self):
-        self.canvas_widget.start_draw_ellipse(self.get_id())
+        self.canvas_widget.start_draw_ellipse()
         self.statusBar().showMessage('绘制椭圆')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def curve_bezier_action(self):
-        self.canvas_widget.start_draw_curve('Bezier', self.get_id())
+        self.canvas_widget.start_draw_curve('Bezier')
         self.statusBar().showMessage('Bezier曲线绘制,单击添加控制点，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
