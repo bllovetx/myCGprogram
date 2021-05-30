@@ -23,8 +23,8 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QDialog)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices
-from PyQt5.QtCore import QRectF, QUrl
+from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF
+from PyQt5.QtCore import QRectF, QUrl, QPointF
 
 
 class MyCanvas(QGraphicsView):
@@ -44,6 +44,9 @@ class MyCanvas(QGraphicsView):
         self.temp_item = None
         
         self.is_drawing = False
+        self.is_moving = False
+        self.is_scaling = False
+        self.edit_p_list = []
         self.setMouseTracking(True)
         self.pen_color = QColor(0, 0, 0)
 
@@ -115,6 +118,27 @@ class MyCanvas(QGraphicsView):
                 self.is_drawing = True
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
+        elif self.status == 'select':
+            self.temp_item = self.item_dict[self.selected_id]
+            temp_RectF = self.temp_item.bound_Rect
+            if temp_RectF.contains(float(x), float(y)):
+                self.is_moving = True
+                self.temp_item.last_p_list = self.temp_item.p_list
+                self.edit_p_list = [[x, y]] # [startP]
+            elif    self.temp_item.tr_RectF.contains(float(x), float(y))\
+                 or self.temp_item.tl_RectF.contains(float(x), float(y))\
+                 or self.temp_item.br_RectF.contains(float(x), float(y))\
+                 or self.temp_item.bl_RectF.contains(float(x), float(y)):
+                self.is_scaling = True
+                self.temp_item.last_p_list = self.temp_item.p_list
+                temp_center_x = temp_RectF.center().x()
+                temp_center_y = temp_RectF.center().y()
+                temp_half_w = temp_RectF.width()/2
+                temp_half_h = temp_RectF.height()/2
+                temp_dis_x = (x-temp_center_x-temp_half_w) if (x>temp_center_x) else (x-temp_center_x+temp_half_w)
+                temp_dis_y = (y-temp_center_y-temp_half_h) if (y>temp_center_y) else (y-temp_center_y+temp_half_h) 
+                # [centerP, halfWH, startReleventDisplace]
+                self.edit_p_list = [[temp_center_x, temp_center_y], [temp_half_w, temp_half_h], [temp_dis_x, temp_dis_y]]
         # TODO: other status 
         self.updateScene([self.sceneRect()])
         super().mousePressEvent(event)
@@ -131,6 +155,15 @@ class MyCanvas(QGraphicsView):
             self.temp_item.p_list[1] = [x, y]
         elif self.status == 'curve' and self.temp_algorithm == 'Bezier' and self.is_drawing:
             self.temp_item.p_list[-1] = [x, y]
+        elif self.status == 'select':
+            if self.is_moving:
+                self.temp_item.p_list = alg.translate(self.temp_item.last_p_list, x - self.edit_p_list[0][0], y - self.edit_p_list[0][1])
+            elif self.is_scaling:
+                temp_sx = (x-self.edit_p_list[2][0]-self.edit_p_list[0][0])/self.edit_p_list[1][0]
+                temp_sy = (y-self.edit_p_list[2][1]-self.edit_p_list[0][1])/self.edit_p_list[1][1]
+                temp_s = temp_sx if (abs(temp_sx)>abs(temp_sy)) else temp_sy
+                self.temp_item.p_list = alg.scale(self.temp_item.last_p_list, self.edit_p_list[0][0], self.edit_p_list[0][1], temp_s)
+
         # TODO: other status
         self.updateScene([self.sceneRect()])
         super().mouseMoveEvent(event)
@@ -166,6 +199,13 @@ class MyCanvas(QGraphicsView):
                     self.finish_draw()
                 else:
                     self.temp_item.p_list.append( [x, y] )
+        elif self.status == 'select':
+            if self.is_moving:
+                self.is_moving = False
+                self.edit_p_list = []
+            elif self.is_scaling:
+                self.is_scaling = False
+                self.edit_p_list = []
         # TODO: other status
         super().mouseReleaseEvent(event)
 
@@ -203,6 +243,15 @@ class MyItem(QGraphicsItem):
         self.algorithm = algorithm  # 绘制算法，'DDA'、'Bresenham'、'Bezier'、'B-spline'等
         self.selected = False
         self.item_pen_color = pen_color
+        self.bound_color = QColor(224, 0, 123)
+        self.arrow_color = QColor(41, 196, 147)# purple: QColor(67, 27, 107)
+
+        self.last_p_list = []       # used when editting
+        self.bound_Rect = QRectF()
+        self.tr_RectF = QRectF()
+        self.tl_RectF = QRectF()
+        self.br_RectF = QRectF()
+        self.bl_RectF = QRectF()
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
         if self.item_type == 'line':
@@ -211,32 +260,28 @@ class MyItem(QGraphicsItem):
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawRect(self.boundingRect())
+                self.myDrawBound(painter)
         elif self.item_type == 'polygon':
             item_pixels = alg.draw_polygon(self.p_list, self.algorithm)
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawRect(self.boundingRect())
+                self.myDrawBound(painter)
         elif self.item_type == 'ellipse':
             item_pixels = alg.draw_ellipse(self.p_list)
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawRect(self.boundingRect())
+                self.myDrawBound(painter)
         elif self.item_type == 'curve':
             item_pixels = alg.draw_curve(self.p_list, self.algorithm)
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
             if self.selected:
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawRect(self.boundingRect())
+                self.myDrawBound(painter)
         # TODO:    ??
 
     def boundingRect(self) -> QRectF:
@@ -290,6 +335,47 @@ class MyItem(QGraphicsItem):
             h = ymax - ymin
             return QRectF(xmin - 1, ymin - 1, w + 2, h + 2)
 
+    def myDrawBound(self, painter: QPainter):
+        # draw bounding box
+        painter.setPen(self.bound_color)
+        self.bound_Rect = self.boundingRect()
+        painter.drawRect(self.bound_Rect)
+        # draw four arrow at each corner R/L: right/left, T/B: top/bottom
+        painter.setPen(self.arrow_color)
+        painter.setBrush(self.arrow_color)
+        tr_startP = self.bound_Rect.topRight()    + QPointF( 5,-5)
+        tl_startP = self.bound_Rect.topLeft()     + QPointF(-5,-5)
+        br_startP = self.bound_Rect.bottomRight() + QPointF( 5, 5)
+        bl_startP = self.bound_Rect.bottomLeft()  + QPointF(-5, 5)
+        tr_endP = tr_startP + QPointF( 15,-15)
+        tl_endP = tl_startP + QPointF(-15,-15)
+        br_endP = br_startP + QPointF( 15, 15)
+        bl_endP = bl_startP + QPointF(-15, 15)
+        tr_p1 = tr_endP + QPointF(-5, 0)
+        tl_p1 = tl_endP + QPointF( 5, 0)
+        br_p1 = br_endP + QPointF(-5, 0)
+        bl_p1 = bl_endP + QPointF( 5, 0)
+        tr_p2 = tr_endP + QPointF( 0, 5)
+        tl_p2 = tl_endP + QPointF( 0, 5)
+        br_p2 = br_endP + QPointF( 0,-5)
+        bl_p2 = bl_endP + QPointF( 0,-5)
+        painter.drawLine(tr_startP, tr_endP)
+        painter.drawLine(tl_startP, tl_endP)
+        painter.drawLine(br_startP, br_endP)
+        painter.drawLine(bl_startP, bl_endP)
+        tr_polygon = (QPolygonF() << tr_endP << tr_p1 << tr_p2)
+        tl_polygon = (QPolygonF() << tl_endP << tl_p1 << tl_p2)
+        br_polygon = (QPolygonF() << br_endP << br_p1 << br_p2)
+        bl_polygon = (QPolygonF() << bl_endP << bl_p1 << bl_p2)
+        painter.drawPolygon(tr_polygon)
+        painter.drawPolygon(tl_polygon)
+        painter.drawPolygon(br_polygon)
+        painter.drawPolygon(bl_polygon)
+        self.tr_RectF = QRectF(tr_startP, tr_endP)
+        self.tl_RectF = QRectF(tl_startP, tl_endP)
+        self.br_RectF = QRectF(br_startP, br_endP)
+        self.bl_RectF = QRectF(bl_startP, bl_endP)
+
 class MainWindow(QMainWindow):
     """
     主窗口类
@@ -306,7 +392,7 @@ class MainWindow(QMainWindow):
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(0, 0, 600, 600)
         self.canvas_widget = MyCanvas(self.scene, self)
-        self.canvas_widget.setFixedSize(600+20, 600+20)
+        self.canvas_widget.setFixedSize(600+5, 600+5)
         self.canvas_widget.main_window = self
         self.canvas_widget.list_widget = self.list_widget
 
@@ -414,7 +500,7 @@ class MainWindow(QMainWindow):
             temp_color = widthHeightPara["color"]
             self.canvas_widget.setStyleSheet(f'QWidget {{background-color: {temp_color};}}')
             self.scene.setSceneRect(0, 0, temp_width, temp_height)
-            self.canvas_widget.setFixedSize(temp_width + 20, temp_height + 20)
+            self.canvas_widget.setFixedSize(temp_width + 5, temp_height + 5)
             self.resize(temp_width, temp_height)
             self.statusBar().showMessage(f'Reset canvas to width: {temp_width}, height: {temp_height}, background Color: {temp_color}')
             # reset window para

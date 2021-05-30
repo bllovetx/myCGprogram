@@ -223,7 +223,7 @@ def translate(p_list, dx, dy):
     """
     result = []
     for point in p_list:
-        result.apend((point[0]+dx, point[1]+dy))
+        result.append((point[0]+dx, point[1]+dy))
     return result
 
 
@@ -261,6 +261,7 @@ def scale(p_list, x, y, s):
         result.append( (round(x+(p[0]-x)*s),\
                         round(y+(p[1]-y)*s) \
             ))
+    return result
 
 
 def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
