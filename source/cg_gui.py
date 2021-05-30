@@ -104,20 +104,24 @@ class MyCanvas(QGraphicsView):
         y = int(pos.y())
         if self.status == 'line':
             self.is_drawing = True
+            self.main_window.statusBar().showMessage('drawing line')
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color, self.temp_algorithm)
             self.scene().addItem(self.temp_item)
         elif self.status == 'polygon':
             if not self.is_drawing:               # start drawing
                 self.is_drawing = True
+                self.main_window.statusBar().showMessage('drawing polygon')
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
         elif self.status == 'ellipse':
             self.is_drawing = True
+            self.main_window.statusBar().showMessage('drawing ellipse')
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color)
             self.scene().addItem(self.temp_item)
         elif self.status == 'curve' and self.temp_algorithm == 'Bezier':
             if not self.is_drawing:
                 self.is_drawing = True
+                self.main_window.statusBar().showMessage('drawing curve by Bezier')
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
         elif self.status == 'select':
@@ -125,6 +129,7 @@ class MyCanvas(QGraphicsView):
             temp_RectF = self.temp_item.bound_Rect
             if temp_RectF.contains(float(x), float(y)):
                 self.is_moving = True
+                self.main_window.statusBar().showMessage('translating')
                 self.temp_item.last_p_list = self.temp_item.p_list
                 self.edit_p_list = [[x, y]] # [startP]
             elif    self.temp_item.tr_RectF.contains(float(x), float(y))\
@@ -132,6 +137,7 @@ class MyCanvas(QGraphicsView):
                  or self.temp_item.br_RectF.contains(float(x), float(y))\
                  or self.temp_item.bl_RectF.contains(float(x), float(y)):
                 self.is_scaling = True
+                self.main_window.statusBar().showMessage('scaling')
                 self.temp_item.last_p_list = self.temp_item.p_list
                 temp_center_x = temp_RectF.center().x()
                 temp_center_y = temp_RectF.center().y()
