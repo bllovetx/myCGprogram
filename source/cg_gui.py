@@ -2,6 +2,8 @@
 # -*- coding:utf-8 -*-
 
 import sys
+
+from PyQt5 import QtWidgets
 import cg_algorithms as alg
 from typing import Optional
 from PyQt5.QtWidgets import (
@@ -23,8 +25,8 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QDialog)
-from PyQt5.QtGui import QDoubleValidator, QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF
-from PyQt5.QtCore import QRectF, QUrl, QPointF
+from PyQt5.QtGui import QDoubleValidator, QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF, QPixmap, QMovie
+from PyQt5.QtCore import QRectF, QUrl, QPointF, Qt, QSize
 
 
 class MyCanvas(QGraphicsView):
@@ -733,13 +735,18 @@ class WidthHeightDialog(QDialog):
             }
         """)
 
-
         self.confirmButton = QPushButton("Confirm")
         self.cancelButton = QPushButton("Cancel")
         self.confirmButton.clicked.connect(self.confirm_act)
         self.cancelButton.clicked.connect(self.cancel_act)
         self.getColorButton = QPushButton("Select")
         self.getColorButton.clicked.connect(self.getColor_act)
+
+        self.right_pic = QPixmap('pics/wlop_bg.jpg')
+        self.pic_widget = QtWidgets.QLabel()
+        self.pic_widget.setPixmap(self.right_pic.scaled(260, 260, Qt.KeepAspectRatio))
+        self.pic_widget.setMaximumSize(150, 150)
+
 
         mainLayout = QGridLayout()
         mainLayout.addWidget(self.widthLabel,      0, 0)
@@ -756,6 +763,7 @@ class WidthHeightDialog(QDialog):
         mainLayout.setRowStretch(3, 1)
         mainLayout.setHorizontalSpacing(15)
         mainLayout.setVerticalSpacing(5)
+        mainLayout.addWidget(self.pic_widget,      0, 3, 4, 3)
         self.setLayout(mainLayout)
 
     def getColor_act (self):
@@ -827,6 +835,11 @@ class TranslationDialog(QDialog):
         self.confirmButton.clicked.connect(self.confirm_act)
         self.cancelButton.clicked.connect(self.cancel_act)
 
+        self.right_pic = QPixmap('pics/wlop_bg2.jpg')
+        self.pic_widget = QtWidgets.QLabel()
+        self.pic_widget.setPixmap(self.right_pic.scaled(130, 130, Qt.KeepAspectRatio))
+        self.pic_widget.setMaximumSize(130, 110)
+
         mainLayout = QGridLayout()
         mainLayout.addWidget(self.dxLabel,      0, 0)
         mainLayout.addWidget(self.dxEdit,       0, 1, 1, 2)
@@ -835,7 +848,8 @@ class TranslationDialog(QDialog):
         mainLayout.setColumnMinimumWidth(1, 130)
         mainLayout.setColumnMinimumWidth(2, 130)
         mainLayout.addWidget(self.confirmButton,   2, 1)        
-        mainLayout.addWidget(self.cancelButton,    2, 2)        
+        mainLayout.addWidget(self.cancelButton,    2, 2)   
+        mainLayout.addWidget(self.pic_widget,      0, 3, 4, 3)     
         mainLayout.setRowStretch(3, 1)
         mainLayout.setHorizontalSpacing(15)
         mainLayout.setVerticalSpacing(5)
@@ -918,11 +932,17 @@ class RotationDialog(QDialog):
             }
         """)
 
-
         self.confirmButton = QPushButton("Confirm")
         self.cancelButton = QPushButton("Cancel")
         self.confirmButton.clicked.connect(self.confirm_act)
         self.cancelButton.clicked.connect(self.cancel_act)
+
+        self.pic_widget = QtWidgets.QLabel()
+        self.pic_widget.setMaximumSize(140, 180)
+        self.megumin2 = QMovie('pics/megumin2.webp')
+        self.megumin2.setScaledSize(QSize(140, 180))
+        self.pic_widget.setMovie(self.megumin2)
+        self.megumin2.start()
 
         mainLayout = QGridLayout()
         mainLayout.addWidget(self.descriptionLabel,0, 0, 1, 3)
@@ -935,7 +955,8 @@ class RotationDialog(QDialog):
         mainLayout.setColumnMinimumWidth(1, 130)
         mainLayout.setColumnMinimumWidth(2, 130)
         mainLayout.addWidget(self.confirmButton,   4, 1)        
-        mainLayout.addWidget(self.cancelButton,    4, 2)        
+        mainLayout.addWidget(self.cancelButton,    4, 2) 
+        mainLayout.addWidget(self.pic_widget,      0, 3, 5, 3)    
         mainLayout.setRowStretch(3, 1)
         mainLayout.setHorizontalSpacing(15)
         mainLayout.setVerticalSpacing(5)
@@ -1025,6 +1046,11 @@ class ScalingDialog(QDialog):
         self.confirmButton.clicked.connect(self.confirm_act)
         self.cancelButton.clicked.connect(self.cancel_act)
 
+        self.right_pic = QPixmap('pics/YDIYA.jpg')
+        self.pic_widget = QtWidgets.QLabel()
+        self.pic_widget.setPixmap(self.right_pic.scaled(230, 260, Qt.KeepAspectRatio))
+        self.pic_widget.setMaximumSize(130, 180)
+
         mainLayout = QGridLayout()
         mainLayout.addWidget(self.descriptionLabel,0, 0, 1, 3)
         mainLayout.addWidget(self.xLabel,          1, 0)
@@ -1036,7 +1062,8 @@ class ScalingDialog(QDialog):
         mainLayout.setColumnMinimumWidth(1, 130)
         mainLayout.setColumnMinimumWidth(2, 130)
         mainLayout.addWidget(self.confirmButton,   4, 1)        
-        mainLayout.addWidget(self.cancelButton,    4, 2)        
+        mainLayout.addWidget(self.cancelButton,    4, 2)  
+        mainLayout.addWidget(self.pic_widget,      0, 3, 5, 3) 
         mainLayout.setRowStretch(3, 1)
         mainLayout.setHorizontalSpacing(15)
         mainLayout.setVerticalSpacing(5)
