@@ -331,12 +331,12 @@ class MainWindow(QMainWindow):
 
         # 设置菜单栏
         menubar = self.menuBar()
-        file_menu = menubar.addMenu('文件')
+        file_menu = menubar.addMenu('&File')
         set_pen_act = file_menu.addAction('设置画笔')
         reset_canvas_act = file_menu.addAction('重置画布')
         save_canvas_act = file_menu.addAction('保存画布')
         exit_act = file_menu.addAction('退出')
-        draw_menu = menubar.addMenu('绘制')
+        draw_menu = menubar.addMenu('&Draw')
         line_menu = draw_menu.addMenu('线段')
         line_naive_act = line_menu.addAction('Naive')
         line_dda_act = line_menu.addAction('DDA')
@@ -348,13 +348,14 @@ class MainWindow(QMainWindow):
         curve_menu = draw_menu.addMenu('曲线')
         curve_bezier_act = curve_menu.addAction('Bezier')
         curve_b_spline_act = curve_menu.addAction('B-spline')
-        edit_menu = menubar.addMenu('编辑')
+        edit_menu = menubar.addMenu('&Edit')
         translate_act = edit_menu.addAction('平移')
         rotate_act = edit_menu.addAction('旋转')
         scale_act = edit_menu.addAction('缩放')
         clip_menu = edit_menu.addMenu('裁剪')
         clip_cohen_sutherland_act = clip_menu.addAction('Cohen-Sutherland')
         clip_liang_barsky_act = clip_menu.addAction('Liang-Barsky')
+        help_menu = menubar.addMenu('&Help')
 
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
