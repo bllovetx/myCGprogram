@@ -240,6 +240,10 @@ class MyCanvas(QGraphicsView):
         self.temp_item = self.item_dict[self.selected_id]
         self.temp_item.p_list = alg.rotate(self.temp_item.p_list, x, y, -r)
         # r is inverted since y is inverted
+    
+    def mycanvas_scaling(self, x, y, s):
+        self.temp_item = self.item_dict[self.selected_id]
+        self.temp_item.p_list = alg.scale(self.temp_item.p_list, x, y, s)
 
 class MyItem(QGraphicsItem):
     """
@@ -483,6 +487,7 @@ class MainWindow(QMainWindow):
         # Edit
         translate_act.triggered.connect(self.translate_action)
         rotate_act.triggered.connect(self.rotate_action)
+        scale_act.triggered.connect(self.scale_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -635,6 +640,26 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Rotation x = {temp_x}, y = {temp_y}, r = {temp_r}deg succeed')
         else:
             self.statusBar().showMessage('Rotation canceled')
+
+    def scale_action(self):
+        temp_id = self.canvas_widget.selected_id
+        if temp_id == '':    # item not selected
+            self.statusBar().showMessage('Please select item in list widget first!')
+            return
+        temp_item = self.canvas_widget.item_dict[temp_id]
+        scalePara = {}
+        RectF_center_x = int(temp_item.bound_Rect.center().x())
+        RectF_center_y = int(temp_item.bound_Rect.center().y())
+        sDialogue = ScalingDialog(scalePara, RectF_center_x, RectF_center_y)
+        sDialogue.exec_()
+        if scalePara["confirm"] == True:
+            temp_x = int(scalePara["x"])
+            temp_y = int(scalePara["y"])
+            temp_s = int(scalePara["s"])
+            self.canvas_widget.mycanvas_scaling(temp_x, temp_y, temp_s)
+            self.statusBar().showMessage(f'Scaling x = {temp_x}, y = {temp_y}, s = {temp_s} succeed')
+        else:
+            self.statusBar().showMessage('Scaling canceled')
     # TODO: realise other action funcs
 
     # Help menu actions
@@ -920,6 +945,107 @@ class RotationDialog(QDialog):
         self.para["x"] = self.xEdit.placeholderText() if (self.xEdit.text() == '') else self.xEdit.text()
         self.para["y"] = self.yEdit.placeholderText() if (self.yEdit.text() == '') else self.yEdit.text()
         self.para["r"] = self.rEdit.placeholderText() if (self.rEdit.text() == '') else self.rEdit.text()
+        self.para["confirm"] = True
+        self.close()
+
+    def cancel_act (self):
+        self.para["confirm"] = False
+        self.close()
+
+class ScalingDialog(QDialog):
+    def __init__(self, para, default_x, default_y): 
+        # para = {"x": center_x=RectF.center_x, "y": center_y=RectF.center_y, "s": scale = 1, "confirm": confirm = False}      
+        super(ScalingDialog,self).__init__()
+
+        self.para = para
+        self.para["x"] = str(default_x)
+        self.para["y"] = str(default_y)
+        self.para["s"] = '1'
+        self.para["confirm"] = False
+        
+        # set self theme
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #282c34;
+                color: #bbbbbb;
+            }
+        """)
+        self.setWindowTitle("Scaling")
+        self.setWindowIcon(QIcon("./pics/favicon.ico"))
+
+        self.descriptionLabel = QLabel("Default center is the center of bounding box")
+        self.descriptionLabel.setStyleSheet("color: #68748a")
+        self.xLabel = QLabel("center x: ")
+        self.yLabel = QLabel("center y: ")
+        self.sLabel = QLabel("scale ratio: ")
+
+        self.xEdit = QLineEdit()   
+        self.xEdit.setPlaceholderText(str(default_x))
+        self.xEdit.setValidator(QIntValidator())
+        self.xEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px
+            }
+        """)
+        self.yEdit = QLineEdit()   
+        self.yEdit.setPlaceholderText(str(default_y))
+        self.yEdit.setValidator(QIntValidator())
+        self.yEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+        self.sEdit = QLineEdit()   
+        self.sEdit.setPlaceholderText("1")
+        self.sEdit.setValidator(QDoubleValidator())
+        self.sEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+
+
+        self.confirmButton = QPushButton("Confirm")
+        self.cancelButton = QPushButton("Cancel")
+        self.confirmButton.clicked.connect(self.confirm_act)
+        self.cancelButton.clicked.connect(self.cancel_act)
+
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.descriptionLabel,0, 0, 1, 3)
+        mainLayout.addWidget(self.xLabel,          1, 0)
+        mainLayout.addWidget(self.xEdit,           1, 1, 1, 2)
+        mainLayout.addWidget(self.yLabel,          2, 0)
+        mainLayout.addWidget(self.yEdit,           2, 1, 1, 2)
+        mainLayout.addWidget(self.sLabel,          3, 0)
+        mainLayout.addWidget(self.sEdit,           3, 1, 1, 2)
+        mainLayout.setColumnMinimumWidth(1, 130)
+        mainLayout.setColumnMinimumWidth(2, 130)
+        mainLayout.addWidget(self.confirmButton,   4, 1)        
+        mainLayout.addWidget(self.cancelButton,    4, 2)        
+        mainLayout.setRowStretch(3, 1)
+        mainLayout.setHorizontalSpacing(15)
+        mainLayout.setVerticalSpacing(5)
+        self.setLayout(mainLayout)
+
+    def confirm_act (self):
+        self.para["x"] = self.xEdit.placeholderText() if (self.xEdit.text() == '') else self.xEdit.text()
+        self.para["y"] = self.yEdit.placeholderText() if (self.yEdit.text() == '') else self.yEdit.text()
+        self.para["s"] = self.sEdit.placeholderText() if (self.sEdit.text() == '') else self.sEdit.text()
         self.para["confirm"] = True
         self.close()
 
