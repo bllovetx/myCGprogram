@@ -244,7 +244,7 @@ class MyItem(QGraphicsItem):
         self.selected = False
         self.item_pen_color = pen_color
         self.bound_color = QColor(224, 0, 123)
-        self.arrow_color = QColor(41, 196, 147)# purple: QColor(67, 27, 107)
+        self.arrow_color = QColor(117, 193, 246)# purple: QColor(67, 27, 107)
 
         self.last_p_list = []       # used when editting
         self.bound_Rect = QRectF()
@@ -507,8 +507,6 @@ class MainWindow(QMainWindow):
             self.item_cnt = 0
             # reset scene
             self.scene.clear()
-            # reset list_widget
-            self.list_widget.clear()
             # reset canvas
             self.canvas_widget.item_dict = {}
             self.canvas_widget.selected_id = ''
@@ -518,6 +516,8 @@ class MainWindow(QMainWindow):
             self.canvas_widget.temp_item = None   
             self.canvas_widget.is_drawing = False
             self.canvas_widget.pen_color = QColor(0, 0, 0)
+            # reset list_widget
+            self.list_widget.clear()
 
     def save_canvas_action(self):
         # select savepath
