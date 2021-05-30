@@ -231,6 +231,12 @@ class MyCanvas(QGraphicsView):
 
         return temp_image
 
+    # Edit
+    def mycanvas_translation(self, dx, dy):
+        self.temp_item = self.item_dict[self.selected_id]
+        self.temp_item.p_list = alg.translate(self.temp_item.p_list, dx, dy)
+
+
 class MyItem(QGraphicsItem):
     """
     自定义图元类，继承自QGraphicsItem
@@ -458,6 +464,7 @@ class MainWindow(QMainWindow):
         set_pen_act.triggered.connect(self.set_pen_action)
         reset_canvas_act.triggered.connect(self.reset_canvas_action)
         save_canvas_act.triggered.connect(self.save_canvas_action)
+        # Draw
         ## line funcs
         line_naive_act.triggered.connect(self.line_naive_action)
         line_dda_act.triggered.connect(self.line_dda_action)
@@ -469,6 +476,8 @@ class MainWindow(QMainWindow):
         ellipse_act.triggered.connect(self.ellipse_action)
         ## curve funcs
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
+        # Edit
+        translate_act.triggered.connect(self.translate_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -493,6 +502,7 @@ class MainWindow(QMainWindow):
         self.item_cnt += 1
         return _id
 
+    # File action
     def set_pen_action(self):
         self.canvas_widget.pen_color = QColorDialog.getColor()
         self.statusBar().showMessage('Pen color selected: %s' % self.canvas_widget.pen_color.name())
@@ -538,6 +548,7 @@ class MainWindow(QMainWindow):
         # get image and save
         self.canvas_widget.mycanvas_to_QImage().save(save_path)
 
+    # Draw action
     def line_naive_action(self):
         self.canvas_widget.start_draw_line('Naive')
         self.statusBar().showMessage('Naive算法绘制线段')
@@ -581,6 +592,21 @@ class MainWindow(QMainWindow):
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
+    # Edit action
+    def translate_action(self):
+        if self.canvas_widget.selected_id == '':    # item not selected
+            self.statusBar().showMessage('Please select item in list widget first!')
+            return
+        translatePara = {}
+        tslDialogue = TranslationDialog(translatePara)
+        tslDialogue.exec_()
+        if translatePara["confirm"] == True:
+            temp_dx = int(translatePara["dx"])
+            temp_dy = int(translatePara["dy"])
+            self.canvas_widget.mycanvas_translation(temp_dx, temp_dy)
+            self.statusBar().showMessage(f'Translation dx = {temp_dx}, dy = {temp_dy} succeed')
+        else:
+            self.statusBar().showMessage('Translation canceled')
     # TODO: realise other action funcs
 
     # Help menu actions
@@ -686,6 +712,85 @@ class WidthHeightDialog(QDialog):
         self.para["width"] = self.widthEdit.placeholderText() if (self.widthEdit.text() == '') else self.widthEdit.text()
         self.para["height"] = self.heightEdit.placeholderText() if (self.heightEdit.text() == '') else self.heightEdit.text()
         self.para["color"] = self.colorSelected.text()
+        self.para["confirm"] = True
+        self.close()
+
+    def cancel_act (self):
+        self.para["confirm"] = False
+        self.close()
+
+class TranslationDialog(QDialog):
+    def __init__(self, para): 
+        # para = {"dx": dx=0, "dy": dy=0, "confirm": confirm = False}      
+        super(TranslationDialog,self).__init__()
+
+        self.para = para
+        self.para["dx"] = 0
+        self.para["dy"] = 0
+        self.para["confirm"] = False
+        
+        # set self theme
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #282c34;
+                color: #bbbbbb;
+            }
+        """)
+        self.setWindowTitle("Translation")
+        self.setWindowIcon(QIcon("./pics/favicon.ico"))
+
+        self.dxLabel = QLabel("x displacement: ")
+        self.dyLabel= QLabel("y displacement: ")
+
+        self.dxEdit = QLineEdit()   
+        self.dxEdit.setPlaceholderText("0")
+        self.dxEdit.setValidator(QIntValidator())
+        self.dxEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px
+            }
+        """)
+        self.dyEdit = QLineEdit()   
+        self.dyEdit.setPlaceholderText("0")
+        self.dyEdit.setValidator(QIntValidator())
+        self.dyEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+
+        self.confirmButton = QPushButton("Confirm")
+        self.cancelButton = QPushButton("Cancel")
+        self.confirmButton.clicked.connect(self.confirm_act)
+        self.cancelButton.clicked.connect(self.cancel_act)
+
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.dxLabel,      0, 0)
+        mainLayout.addWidget(self.dxEdit,       0, 1, 1, 2)
+        mainLayout.addWidget(self.dyLabel,     1, 0)
+        mainLayout.addWidget(self.dyEdit,      1, 1, 1, 2)
+        mainLayout.setColumnMinimumWidth(1, 130)
+        mainLayout.setColumnMinimumWidth(2, 130)
+        mainLayout.addWidget(self.confirmButton,   2, 1)        
+        mainLayout.addWidget(self.cancelButton,    2, 2)        
+        mainLayout.setRowStretch(3, 1)
+        mainLayout.setHorizontalSpacing(15)
+        mainLayout.setVerticalSpacing(5)
+        self.setLayout(mainLayout)
+
+    def confirm_act (self):
+        self.para["dx"] = self.dxEdit.placeholderText() if (self.dxEdit.text() == '') else self.dxEdit.text()
+        self.para["dy"] = self.dyEdit.placeholderText() if (self.dyEdit.text() == '') else self.dyEdit.text()
         self.para["confirm"] = True
         self.close()
 
