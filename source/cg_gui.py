@@ -23,8 +23,8 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QDialog)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator
-from PyQt5.QtCore import QRectF
+from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices
+from PyQt5.QtCore import QRectF, QUrl
 
 
 class MyCanvas(QGraphicsView):
@@ -356,25 +356,30 @@ class MainWindow(QMainWindow):
         clip_cohen_sutherland_act = clip_menu.addAction('Cohen-Sutherland')
         clip_liang_barsky_act = clip_menu.addAction('Liang-Barsky')
         help_menu = menubar.addMenu('&Help')
+        github_act = help_menu.addAction('Github')
+        php_act = help_menu.addAction('About Me')
 
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
         set_pen_act.triggered.connect(self.set_pen_action)
         reset_canvas_act.triggered.connect(self.reset_canvas_action)
         save_canvas_act.triggered.connect(self.save_canvas_action)
-            # line funcs
+        ## line funcs
         line_naive_act.triggered.connect(self.line_naive_action)
         line_dda_act.triggered.connect(self.line_dda_action)
         line_bresenham_act.triggered.connect(self.line_bresenham_action)
-            # polygon funcs
+        ## polygon funcs
         polygon_dda_act.triggered.connect(self.polygon_dda_action)
         polygon_bresenham_act.triggered.connect(self.polygon_bresenham_action)
-            # ellipse funcs
+        ## ellipse funcs
         ellipse_act.triggered.connect(self.ellipse_action)
-            # curve funcs
+        ## curve funcs
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
         # TODO: other func link
             # select funcs
+        # Help actions
+        github_act.triggered.connect(self.open_github_page)
+        php_act.triggered.connect(self.open_my_php)
         self.list_widget.currentTextChanged.connect(self.canvas_widget.selection_changed)
 
         # 设置主窗口的布局
@@ -483,6 +488,13 @@ class MainWindow(QMainWindow):
         self.canvas_widget.clear_selection()
 
     # TODO: realise other action funcs
+
+    # Help menu actions
+    def open_github_page(self):
+        QDesktopServices.openUrl(QUrl("https://github.com/bllovetx/myCGprogram"))
+
+    def open_my_php(self):
+        QDesktopServices.openUrl(QUrl("https://zxzq.me"))
 
 class WidthHeightDialog(QDialog):
     def __init__(self, para): 
