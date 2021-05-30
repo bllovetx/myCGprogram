@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QInputDialog,
     QDialog)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF
+from PyQt5.QtGui import QDoubleValidator, QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF
 from PyQt5.QtCore import QRectF, QUrl, QPointF
 
 
@@ -236,6 +236,10 @@ class MyCanvas(QGraphicsView):
         self.temp_item = self.item_dict[self.selected_id]
         self.temp_item.p_list = alg.translate(self.temp_item.p_list, dx, dy)
 
+    def mycanvas_rotation(self, x, y, r):
+        self.temp_item = self.item_dict[self.selected_id]
+        self.temp_item.p_list = alg.rotate(self.temp_item.p_list, x, y, -r)
+        # r is inverted since y is inverted
 
 class MyItem(QGraphicsItem):
     """
@@ -478,6 +482,7 @@ class MainWindow(QMainWindow):
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
         # Edit
         translate_act.triggered.connect(self.translate_action)
+        rotate_act.triggered.connect(self.rotate_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -607,6 +612,29 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Translation dx = {temp_dx}, dy = {temp_dy} succeed')
         else:
             self.statusBar().showMessage('Translation canceled')
+
+    def rotate_action(self):
+        temp_id = self.canvas_widget.selected_id
+        if temp_id == '':    # item not selected
+            self.statusBar().showMessage('Please select item in list widget first!')
+            return
+        temp_item = self.canvas_widget.item_dict[temp_id]
+        if temp_item.item_type == 'ellipse':
+            self.statusBar().showMessage('ellipse should not be rotated!')
+            return
+        rotatePara = {}
+        RectF_center_x = int(temp_item.bound_Rect.center().x())
+        RectF_center_y = int(temp_item.bound_Rect.center().y())
+        rotDialogue = RotationDialog(rotatePara, RectF_center_x, RectF_center_y)
+        rotDialogue.exec_()
+        if rotatePara["confirm"] == True:
+            temp_x = int(rotatePara["x"])
+            temp_y = int(rotatePara["y"])
+            temp_r = int(rotatePara["r"])
+            self.canvas_widget.mycanvas_rotation(temp_x, temp_y, temp_r)
+            self.statusBar().showMessage(f'Rotation x = {temp_x}, y = {temp_y}, r = {temp_r}deg succeed')
+        else:
+            self.statusBar().showMessage('Rotation canceled')
     # TODO: realise other action funcs
 
     # Help menu actions
@@ -618,12 +646,12 @@ class MainWindow(QMainWindow):
 
 class WidthHeightDialog(QDialog):
     def __init__(self, para): 
-        # para = {"width": width=600, "height": height=600, "color": Hex="#ffffff", "confirm": confirm = False}      
+        # para = {"width": width="600", "height": height="600", "color": Hex="#ffffff", "confirm": confirm = False}      
         super(WidthHeightDialog,self).__init__()
 
         self.para = para
-        self.para["width"] = 600
-        self.para["height"] = 600
+        self.para["width"] = "600"
+        self.para["height"] = "600"
         self.para["color"] = "#ffffff"
         self.para["confirm"] = False
         
@@ -721,12 +749,12 @@ class WidthHeightDialog(QDialog):
 
 class TranslationDialog(QDialog):
     def __init__(self, para): 
-        # para = {"dx": dx=0, "dy": dy=0, "confirm": confirm = False}      
+        # para = {"dx": dx="0", "dy": dy="0", "confirm": confirm = False}      
         super(TranslationDialog,self).__init__()
 
         self.para = para
-        self.para["dx"] = 0
-        self.para["dy"] = 0
+        self.para["dx"] = "0"
+        self.para["dy"] = "0"
         self.para["confirm"] = False
         
         # set self theme
@@ -791,6 +819,107 @@ class TranslationDialog(QDialog):
     def confirm_act (self):
         self.para["dx"] = self.dxEdit.placeholderText() if (self.dxEdit.text() == '') else self.dxEdit.text()
         self.para["dy"] = self.dyEdit.placeholderText() if (self.dyEdit.text() == '') else self.dyEdit.text()
+        self.para["confirm"] = True
+        self.close()
+
+    def cancel_act (self):
+        self.para["confirm"] = False
+        self.close()
+
+class RotationDialog(QDialog):
+    def __init__(self, para, default_x, default_y): 
+        # para = {"x": center_x=RectF.center_x, "y": center_y=RectF.center_y, "r": radius = 0 deg, "confirm": confirm = False}      
+        super(RotationDialog,self).__init__()
+
+        self.para = para
+        self.para["x"] = str(default_x)
+        self.para["y"] = str(default_y)
+        self.para["r"] = '0'
+        self.para["confirm"] = False
+        
+        # set self theme
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #282c34;
+                color: #bbbbbb;
+            }
+        """)
+        self.setWindowTitle("Rotation")
+        self.setWindowIcon(QIcon("./pics/favicon.ico"))
+
+        self.descriptionLabel = QLabel("Default center is the center of bounding box")
+        self.descriptionLabel.setStyleSheet("color: #68748a")
+        self.xLabel = QLabel("center x: ")
+        self.yLabel = QLabel("center y: ")
+        self.rLabel = QLabel("deg(clockwise): ")
+
+        self.xEdit = QLineEdit()   
+        self.xEdit.setPlaceholderText(str(default_x))
+        self.xEdit.setValidator(QIntValidator())
+        self.xEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px
+            }
+        """)
+        self.yEdit = QLineEdit()   
+        self.yEdit.setPlaceholderText(str(default_y))
+        self.yEdit.setValidator(QIntValidator())
+        self.yEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+        self.rEdit = QLineEdit()   
+        self.rEdit.setPlaceholderText("0")
+        self.rEdit.setValidator(QDoubleValidator())
+        self.rEdit.setStyleSheet("""
+            QLineEdit {
+                background-color: #383e4a;
+                color: #bbbbbb;
+                border-radius: 10px;
+                border: 2px solid rgb(37, 39, 48);
+                height: 30px;
+                padding: 0px 10px;
+            }
+        """)
+
+
+        self.confirmButton = QPushButton("Confirm")
+        self.cancelButton = QPushButton("Cancel")
+        self.confirmButton.clicked.connect(self.confirm_act)
+        self.cancelButton.clicked.connect(self.cancel_act)
+
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.descriptionLabel,0, 0, 1, 3)
+        mainLayout.addWidget(self.xLabel,          1, 0)
+        mainLayout.addWidget(self.xEdit,           1, 1, 1, 2)
+        mainLayout.addWidget(self.yLabel,          2, 0)
+        mainLayout.addWidget(self.yEdit,           2, 1, 1, 2)
+        mainLayout.addWidget(self.rLabel,          3, 0)
+        mainLayout.addWidget(self.rEdit,           3, 1, 1, 2)
+        mainLayout.setColumnMinimumWidth(1, 130)
+        mainLayout.setColumnMinimumWidth(2, 130)
+        mainLayout.addWidget(self.confirmButton,   4, 1)        
+        mainLayout.addWidget(self.cancelButton,    4, 2)        
+        mainLayout.setRowStretch(3, 1)
+        mainLayout.setHorizontalSpacing(15)
+        mainLayout.setVerticalSpacing(5)
+        self.setLayout(mainLayout)
+
+    def confirm_act (self):
+        self.para["x"] = self.xEdit.placeholderText() if (self.xEdit.text() == '') else self.xEdit.text()
+        self.para["y"] = self.yEdit.placeholderText() if (self.yEdit.text() == '') else self.yEdit.text()
+        self.para["r"] = self.rEdit.placeholderText() if (self.rEdit.text() == '') else self.rEdit.text()
         self.para["confirm"] = True
         self.close()
 
