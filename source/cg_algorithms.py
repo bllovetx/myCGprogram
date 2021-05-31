@@ -5,7 +5,7 @@
 import math
 
 bezier_steps = 1000
-bezier_try = 1/1000
+curve_try = 1/1000
 max_search_step = 1000
 
 # assist funcs
@@ -60,6 +60,30 @@ def bezier_cal(p_list, t):
             cnt_list.append(mix_point(last_list[j], last_list[j+1], t))
         last_list = cnt_list
     return (round(last_list[0][0]), round(last_list[0][1]))
+
+def Bspline_cal(p_list, t):
+    # t = j + x
+        # j = 3, 4, ..., len -1
+        # x in [0, 1)
+        # t in [3, len)
+    # N_j-3 = (1-x)^3/6 = (-x^3+3x^2-3x+1)/6
+    # N_j-2 = (3x^3 - 6x^2 + 4)/6
+    # N_j-1 = (-3x^3+3x^2+3x+1)/6
+    # N_j-0 = x^3 / 6
+    # P(t) = N_j-3 * P_j-3 + ... + N_j-0 * P_j-0
+    PNum = len(p_list)
+    assert(t>=3 and t<PNum)
+    j = math.floor(t)
+    x = t - j
+    xsq = x*x
+    xcub = x*xsq
+    Nj_3 = (-  xcub + 3*xsq - 3*x + 1)/6
+    Nj_2 = ( 3*xcub - 6*xsq       + 4)/6
+    Nj_1 = (-3*xcub + 3*xsq + 3*x + 1)/6
+    Nj_0 =     xcub                   /6
+    return (round(Nj_3*p_list[j-3][0] + Nj_2*p_list[j-2][0] + Nj_1*p_list[j-1][0] + Nj_0*p_list[j][0]),\
+            round(Nj_3*p_list[j-3][1] + Nj_2*p_list[j-2][1] + Nj_1*p_list[j-1][1] + Nj_0*p_list[j][1]))
+    
 
 
 # algorithms
@@ -162,53 +186,63 @@ def draw_curve(p_list, algorithm):
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
     """
     result = []
-
+    controlPNum = len(p_list)
+    # set depend on algorithm
     if algorithm == 'Bezier':
-        if len(p_list) == 1:
+        if controlPNum == 1:
             return p_list
-        t = 0
-        result.append( bezier_cal(p_list, t) )
-        (cnt_x, cnt_y) = result[-1]
-        step = bezier_try
-        do_while_flag = True
-        search_step = 0
-        last_search_state = "start"
-        factor = 2
-        while do_while_flag:
-            temp_t = t + step
-            (temp_x, temp_y) = bezier_cal(p_list, temp_t)
-            step_x = abs(temp_x - cnt_x)
-            step_y = abs(temp_y - cnt_y)
-            max_step = max(step_x, step_y)
-            if max_step > 1:    # step too large
-                if last_search_state == "small":    # flip - reduce factor
-                    factor = math.sqrt(factor)
-                step = step / factor
-                search_step = search_step + 1
-                last_search_state = "large"
-            elif max_step == 0: # step too small
-                if last_search_state == "large":    # flip - reduce factor
-                    factor = math.sqrt(factor)
-                step = step * factor
-                search_step = search_step + 1
-                last_search_state = "small"
-            elif temp_t > 1:    # suitable but out of range
-                do_while_flag = False
-            else:               # find suitable - update
-                # commit result
-                t = temp_t
-                cnt_x = temp_x
-                cnt_y = temp_y
-                result.append((cnt_x, cnt_y))
-                # init search
-                search_step = 0
-                factor = 2
-                last_search_state = "start"
-            if search_step > max_search_step:   # check dead loop
-                assert(0 and "bezier search fall into dead loop!")
-            
+        start_t = 0
+        stop_t = 1
+        curve_cal = bezier_cal 
     elif algorithm == 'B-spline':
-        pass
+        if controlPNum < 4:
+            return []
+        start_t = 3
+        stop_t = controlPNum
+        curve_cal = Bspline_cal
+    # calculate
+    t = start_t
+    result.append( curve_cal(p_list, t) )
+    (cnt_x, cnt_y) = result[-1]
+    step = curve_try
+    do_while_flag = True
+    search_step = 0
+    last_search_state = "start"
+    factor = 2
+    while do_while_flag:
+        temp_t = t + step
+        (temp_x, temp_y) = curve_cal(p_list, temp_t)
+        step_x = abs(temp_x - cnt_x)
+        step_y = abs(temp_y - cnt_y)
+        max_step = max(step_x, step_y)
+        if max_step > 1:    # step too large
+            if last_search_state == "small":    # flip - reduce factor
+                factor = math.sqrt(factor)
+            step = step / factor
+            search_step = search_step + 1
+            last_search_state = "large"
+        elif max_step == 0: # step too small
+            if last_search_state == "large":    # flip - reduce factor
+                factor = math.sqrt(factor)
+            step = step * factor
+            search_step = search_step + 1
+            last_search_state = "small"
+        elif temp_t > stop_t:    # suitable but out of range
+            do_while_flag = False
+        else:               # find suitable - update
+            # commit result
+            t = temp_t
+            cnt_x = temp_x
+            cnt_y = temp_y
+            result.append((cnt_x, cnt_y))
+            # init search
+            search_step = 0
+            factor = 2
+            last_search_state = "start"
+        if search_step > max_search_step:   # check dead loop
+            assert(0 and "curve search fall into dead loop!")
+        if algorithm == 'B-spline' and temp_t + step >= stop_t:# out of range is not permitted when calculationg for 'B-spline'
+            do_while_flag = False
     return result
 
 

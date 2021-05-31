@@ -120,10 +120,10 @@ class MyCanvas(QGraphicsView):
             self.main_window.statusBar().showMessage('drawing ellipse')
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.pen_color)
             self.scene().addItem(self.temp_item)
-        elif self.status == 'curve' and self.temp_algorithm == 'Bezier':
+        elif self.status == 'curve':
             if not self.is_drawing:
                 self.is_drawing = True
-                self.main_window.statusBar().showMessage('drawing curve by Bezier')
+                self.main_window.statusBar().showMessage(f'drawing curve by {self.temp_algorithm}')
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
         elif self.status == 'select':
@@ -163,7 +163,7 @@ class MyCanvas(QGraphicsView):
             self.temp_item.p_list[-1] = [x, y]
         elif self.status == 'ellipse' and self.is_drawing:
             self.temp_item.p_list[1] = [x, y]
-        elif self.status == 'curve' and self.temp_algorithm == 'Bezier' and self.is_drawing:
+        elif self.status == 'curve' and self.is_drawing:
             self.temp_item.p_list[-1] = [x, y]
         elif self.status == 'select':
             if self.is_moving:
@@ -201,7 +201,7 @@ class MyCanvas(QGraphicsView):
             self.item_dict[self.temp_id] = self.temp_item
             self.list_widget.addItem(self.temp_id)
             self.finish_draw()
-        elif self.status == 'curve' and self.temp_algorithm == 'Bezier':
+        elif self.status == 'curve':
             if self.is_drawing:
                 if flag == 2:
                     self.item_dict[self.temp_id] = self.temp_item
@@ -344,8 +344,12 @@ class MyItem(QGraphicsItem):
             return QRectF(x - 1, y - 1, w + 2, h + 2)
         elif self.item_type == 'curve':
             all_pixels = alg.draw_curve(self.p_list, self.algorithm)
-            (xmin, ymin) = all_pixels[0]
-            (xmax, ymax) = all_pixels[0]
+            if not all_pixels:
+                (xmin, ymin) = self.p_list[0]
+                (xmax, ymax) = self.p_list[0]
+            else:
+                (xmin, ymin) = all_pixels[0]
+                (xmax, ymax) = all_pixels[0]
             for (x, y) in all_pixels:
                 if x < xmin:
                     xmin = x
@@ -486,6 +490,7 @@ class MainWindow(QMainWindow):
         ellipse_act.triggered.connect(self.ellipse_action)
         ## curve funcs
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
+        curve_b_spline_act.triggered.connect(self.curve_b_spline_action)
         # Edit
         translate_act.triggered.connect(self.translate_action)
         rotate_act.triggered.connect(self.rotate_action)
@@ -601,6 +606,12 @@ class MainWindow(QMainWindow):
     def curve_bezier_action(self):
         self.canvas_widget.start_draw_curve('Bezier')
         self.statusBar().showMessage('Bezier曲线绘制,单击添加控制点，右键结束')
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
+
+    def curve_b_spline_action(self):
+        self.canvas_widget.start_draw_curve('B-spline')
+        self.statusBar().showMessage('B-spline曲线绘制,单击添加控制点，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
