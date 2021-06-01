@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QDialog)
 from PyQt5.QtGui import QDoubleValidator, QPainter, QMouseEvent, QColor, QIcon, QImage, QIntValidator, QDesktopServices, QPolygonF, QPixmap, QMovie
-from PyQt5.QtCore import QRectF, QUrl, QPointF, Qt, QSize
+from PyQt5.QtCore import QRect, QRectF, QUrl, QPointF, Qt, QSize, QPoint
 
 
 class MyCanvas(QGraphicsView):
@@ -90,9 +90,6 @@ class MyCanvas(QGraphicsView):
 
     def clear_selection(self):
         if self.selected_id != '':
-            if self.status != 'select':
-                print(self.status)
-                print(self.selected_id)
             assert(self.status == 'select')
             self.item_dict[self.selected_id].selected = False
             self.item_dict[self.selected_id].update()
@@ -148,6 +145,7 @@ class MyCanvas(QGraphicsView):
             temp_RectF = self.temp_item.bound_Rect
             if self.is_clipping:    # NOTE:highest priority!!
                 assert((not self.edit_p_list) and self.temp_item.item_type == 'line')
+                self.temp_item.clippingRect = QRect(QPoint(x, y), QPoint(x, y))
                 self.edit_p_list = [[x, y]] # [startP]
                 self.main_window.statusBar().showMessage('Clipping line')
                 self.temp_item.last_p_list = self.temp_item.p_list
@@ -193,7 +191,8 @@ class MyCanvas(QGraphicsView):
                     min(self.edit_p_list[0][0], x), min(self.edit_p_list[0][1], y),\
                     max(self.edit_p_list[0][0], x), max(self.edit_p_list[0][1], y),\
                 self.temp_algorithm)
-                print(self.temp_item.p_list)
+                self.temp_item.clippingRect = QRect(QPoint(min(self.edit_p_list[0][0], x), min(self.edit_p_list[0][1], y)),\
+                                                    QPoint(max(self.edit_p_list[0][0], x), max(self.edit_p_list[0][1], y)))
             elif self.is_moving:
                 self.temp_item.p_list = alg.translate(self.temp_item.last_p_list, x - self.edit_p_list[0][0], y - self.edit_p_list[0][1])
             elif self.is_scaling:
@@ -240,12 +239,16 @@ class MyCanvas(QGraphicsView):
         elif self.status == 'select':
             if self.is_clipping and self.edit_p_list:
                 self.edit_p_list = []
+                self.temp_item.last_p_list = []
+                self.temp_item.clippingRect = None
             elif self.is_moving:
                 self.is_moving = False
                 self.edit_p_list = []
+                self.temp_item.last_p_list = []
             elif self.is_scaling:
                 self.is_scaling = False
                 self.edit_p_list = []
+                self.temp_item.last_p_list = []
         # TODO: other status
         super().mouseReleaseEvent(event)
 
@@ -299,8 +302,11 @@ class MyItem(QGraphicsItem):
         self.item_pen_color = pen_color
         self.bound_color = QColor(224, 0, 123)
         self.arrow_color = QColor(117, 193, 246)# purple: QColor(67, 27, 107)
+        self.select_color = QColor(40, 44, 52, 50)
+        self.last_alpha = 50
 
         self.last_p_list = []       # used when editting
+        self.clippingRect = None
         self.bound_Rect = QRectF()
         self.tr_RectF = QRectF()
         self.tl_RectF = QRectF()
@@ -308,13 +314,22 @@ class MyItem(QGraphicsItem):
         self.bl_RectF = QRectF()
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
-        if not self.p_list:
-            return
         if self.item_type == 'line':
             item_pixels = alg.draw_line(self.p_list, self.algorithm)
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
+            if self.last_p_list:    # is Editting
+                last_item_pixels = alg.draw_line(self.last_p_list, self.algorithm)
+                for p in last_item_pixels:
+                    last_pen_color = QColor(self.item_pen_color)
+                    last_pen_color.setAlpha(self.last_alpha)
+                    painter.setPen(last_pen_color)
+                    painter.drawPoint(*p)
+            if self.clippingRect:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(self.select_color)
+                painter.drawRect(self.clippingRect)
             if self.selected:
                 self.myDrawBound(painter)
         elif self.item_type == 'polygon':
@@ -322,6 +337,13 @@ class MyItem(QGraphicsItem):
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
+            if self.last_p_list:    # is Editting
+                last_item_pixels = alg.draw_polygon(self.last_p_list, self.algorithm)
+                for p in last_item_pixels:
+                    last_pen_color = QColor(self.item_pen_color)
+                    last_pen_color.setAlpha(self.last_alpha)
+                    painter.setPen(last_pen_color)
+                    painter.drawPoint(*p)
             if self.selected:
                 self.myDrawBound(painter)
         elif self.item_type == 'ellipse':
@@ -329,6 +351,13 @@ class MyItem(QGraphicsItem):
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
+            if self.last_p_list:    # is Editting
+                last_item_pixels = alg.draw_ellipse(self.last_p_list)
+                for p in last_item_pixels:
+                    last_pen_color = QColor(self.item_pen_color)
+                    last_pen_color.setAlpha(self.last_alpha)
+                    painter.setPen(last_pen_color)
+                    painter.drawPoint(*p)
             if self.selected:
                 self.myDrawBound(painter)
         elif self.item_type == 'curve':
@@ -336,6 +365,13 @@ class MyItem(QGraphicsItem):
             for p in item_pixels:
                 painter.setPen(self.item_pen_color)
                 painter.drawPoint(*p)
+            if self.last_p_list:    # is Editting
+                last_item_pixels = alg.draw_curve(self.last_p_list, self.algorithm)
+                for p in last_item_pixels:
+                    last_pen_color = QColor(self.item_pen_color)
+                    last_pen_color.setAlpha(self.last_alpha)
+                    painter.setPen(last_pen_color)
+                    painter.drawPoint(*p)
             if self.selected:
                 self.myDrawBound(painter)
         # TODO:    ??
@@ -398,6 +434,8 @@ class MyItem(QGraphicsItem):
             return QRectF(xmin - 1, ymin - 1, w + 2, h + 2)
 
     def myDrawBound(self, painter: QPainter):
+        if not self.p_list:
+            return
         # draw bounding box
         painter.setPen(self.bound_color)
         self.bound_Rect = self.boundingRect()
@@ -575,17 +613,17 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Reset canvas to width: {temp_width}, height: {temp_height}, background Color: {temp_color}')
             # reset window para
             self.item_cnt = 0
-            # reset scene
-            self.scene.clear()
             # reset canvas
-            self.canvas_widget.item_dict = {}
             self.canvas_widget.clear_selection()
+            self.canvas_widget.item_dict = {}
             self.canvas_widget.status = ''
             self.canvas_widget.temp_algorithm = ''
             self.canvas_widget.temp_id = ''
             self.canvas_widget.temp_item = None   
             self.canvas_widget.is_drawing = False
             self.canvas_widget.pen_color = QColor(0, 0, 0)
+            # reset scene
+            self.scene.clear()
             # reset list_widget
             self.list_widget.clear()
 
