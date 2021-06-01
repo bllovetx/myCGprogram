@@ -607,6 +607,7 @@ class MainWindow(QMainWindow):
         clip_menu = edit_menu.addMenu('裁剪')
         clip_cohen_sutherland_act = clip_menu.addAction('Cohen-Sutherland')
         clip_liang_barsky_act = clip_menu.addAction('Liang-Barsky')
+        cancel_select_act = edit_menu.addAction('Cancel Select')
         help_menu = menubar.addMenu('&Help')
         github_act = help_menu.addAction('Github')
         php_act = help_menu.addAction('About Me')
@@ -636,6 +637,7 @@ class MainWindow(QMainWindow):
         scale_act.triggered.connect(self.scale_action)
         clip_cohen_sutherland_act.triggered.connect(self.clip_cohen_sutherland_action)
         clip_liang_barsky_act.triggered.connect(self.clip_liang_barsky_action)
+        cancel_select_act.triggered.connect(self.cancel_select_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -843,6 +845,10 @@ class MainWindow(QMainWindow):
             return
         self.canvas_widget.start_clip('Liang-Barsky')
         self.statusBar().showMessage('Start clip using Liang-Barsky algorithm')
+
+    def cancel_select_action(self):
+        myListClearSelection(self.list_widget)
+        self.canvas_widget.clear_selection()
     # TODO: realise other action funcs
 
     # Help menu actions
