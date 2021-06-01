@@ -7,7 +7,12 @@ import math
 bezier_steps = 1000
 curve_try = 1/1000
 max_search_step = 1000
+topCode = 0b1000
+botCode = 0b0100
+rigCode = 0b0010
+lefCode = 0b0001
 
+# ---------------------------
 # assist funcs
 def noswitch(x, y):
     return (x, y)
@@ -85,7 +90,7 @@ def Bspline_cal(p_list, t):
             round(Nj_3*p_list[j-3][1] + Nj_2*p_list[j-2][1] + Nj_1*p_list[j-1][1] + Nj_0*p_list[j][1]))
     
 
-
+# ---------------------------
 # algorithms
 def draw_line(p_list, algorithm):
     """绘制线段
@@ -175,9 +180,6 @@ def draw_ellipse(p_list):
     return ellipse_walk(xmin, xmax, ymin, ymax, noswitch) \
          + ellipse_walk(ymin, ymax, xmin, xmax, switch)
         
-
-
-
 def draw_curve(p_list, algorithm):
     """绘制曲线
 
@@ -245,8 +247,6 @@ def draw_curve(p_list, algorithm):
             do_while_flag = False
     return result
 
-
-
 def translate(p_list, dx, dy):
     """平移变换
 
@@ -259,7 +259,6 @@ def translate(p_list, dx, dy):
     for point in p_list:
         result.append((point[0]+dx, point[1]+dy))
     return result
-
 
 def rotate(p_list, x, y, r):
     """旋转变换（除椭圆外）
@@ -309,4 +308,63 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
     :param algorithm: (string) 使用的裁剪算法，包括'Cohen-Sutherland'和'Liang-Barsky'
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1]]) 裁剪后线段的起点和终点坐标
     """
-    pass
+    assert(x_min<=x_max and y_min<=y_max)
+    if not p_list:
+        return p_list
+    if algorithm == 'Cohen-Sutherland':
+        start = p_list[0]
+        end = p_list[1]
+        # region: Coding EndPoint
+        startCode = 0b0000
+        endCode   = 0b0000
+        if start[0] < x_min:
+            startCode |= lefCode
+        elif start[0] > x_min:
+            startCode |= rigCode
+        if start[1] < y_min:
+            startCode |= botCode
+        elif start[1] > y_max:
+            startCode |= topCode
+        if end[0] < x_min:
+            endCode |= lefCode
+        elif end[0] > x_min:
+            endCode |= rigCode
+        if end[1] < y_min:
+            endCode |= botCode
+        elif end[1] > y_max:
+            endCode |= topCode
+        #endregion
+        if not (startCode|endCode): # both EndPoint in region 0b0000: trival accept
+            return p_list
+        if startCode&endCode:   # at both side: trival reject(TODO: Check gui)
+            return []
+        # non trival case:
+            # find one out points
+            # calculate nearest intersect
+            # reduce to sub problem
+        (outP, tarP) = (start, end) if startCode else (end, start)
+        t_list = []
+        delta_x = tarP[0] - outP[0]
+        delta_y = tarP[1] - outP[1]
+        if delta_x:
+            tx_min = (x_min - outP[0]) / delta_x
+            if tx_min > 0:
+                t_list.append(tx_min)
+            tx_max = (x_max - outP[0]) / delta_x
+            if tx_max > 0:
+                t_list.append(tx_max)
+        if delta_y:
+            ty_min = (y_min - outP[1]) / delta_y
+            if ty_min > 0:
+                t_list.append(ty_min)
+            ty_max = (y_max - outP[1]) / delta_y
+            if ty_max > 0:
+                t_list.append(ty_max)
+        assert(t_list)
+        t_intersect = min(t_list)
+        print(t_intersect)
+        intP = [int(outP[0]+t_intersect*delta_x), int(outP[1]+t_intersect*delta_y)]
+        return clip([intP, tarP], x_min, y_min, x_max, y_max, algorithm)
+        
+    elif algorithm == 'Liang-Barsky':
+        pass

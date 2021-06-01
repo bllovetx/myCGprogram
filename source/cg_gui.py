@@ -48,6 +48,7 @@ class MyCanvas(QGraphicsView):
         self.is_drawing = False
         self.is_moving = False
         self.is_scaling = False
+        self.is_clipping = False
         self.edit_p_list = []
         self.setMouseTracking(True)
         self.pen_color = QColor(0, 0, 0)
@@ -71,6 +72,12 @@ class MyCanvas(QGraphicsView):
         self.temp_algorithm = algorithm
         self.start_draw()
     
+    def start_clip(self, algorithm):
+        assert(self.status == 'select')
+        self.temp_algorithm = algorithm
+        self.is_clipping = True
+        self.edit_p_list = []
+
     # TODO: start_draw $other graphic$
 
     def start_draw(self):
@@ -83,20 +90,31 @@ class MyCanvas(QGraphicsView):
 
     def clear_selection(self):
         if self.selected_id != '':
-            self.item_dict[self.selected_id].selected = False
-            self.selected_id = ''
-
-    def selection_changed(self, selected):
-        if selected == '':
-            return
-        self.main_window.statusBar().showMessage('图元选择： %s' % selected)
-        if self.selected_id != '':
+            if self.status != 'select':
+                print(self.status)
+                print(self.selected_id)
+            assert(self.status == 'select')
             self.item_dict[self.selected_id].selected = False
             self.item_dict[self.selected_id].update()
-        self.selected_id = selected
-        self.item_dict[selected].selected = True
-        self.item_dict[selected].update()
-        self.status = 'select'
+            self.selected_id = ''
+            self.status = ''
+            self.is_drawing = False
+            self.is_moving = False
+            self.is_scaling = False
+            self.is_clipping = False
+            self.edit_p_list = []
+        else:
+            assert(self.status != 'select')
+
+    def selection_changed(self, selected):
+        self.clear_selection()
+        if selected != '':
+            self.selected_id = selected
+            self.temp_item = self.item_dict[selected]
+            self.temp_item.selected = True
+            self.temp_item.update()
+            self.status = 'select'
+            self.main_window.statusBar().showMessage('图元选择： %s' % selected)
         self.updateScene([self.sceneRect()])
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -127,9 +145,13 @@ class MyCanvas(QGraphicsView):
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
         elif self.status == 'select':
-            self.temp_item = self.item_dict[self.selected_id]
             temp_RectF = self.temp_item.bound_Rect
-            if temp_RectF.contains(float(x), float(y)):
+            if self.is_clipping:    # NOTE:highest priority!!
+                assert((not self.edit_p_list) and self.temp_item.item_type == 'line')
+                self.edit_p_list = [[x, y]] # [startP]
+                self.main_window.statusBar().showMessage('Clipping line')
+                self.temp_item.last_p_list = self.temp_item.p_list
+            elif temp_RectF.contains(float(x), float(y)):
                 self.is_moving = True
                 self.main_window.statusBar().showMessage('translating')
                 self.temp_item.last_p_list = self.temp_item.p_list
@@ -166,7 +188,13 @@ class MyCanvas(QGraphicsView):
         elif self.status == 'curve' and self.is_drawing:
             self.temp_item.p_list[-1] = [x, y]
         elif self.status == 'select':
-            if self.is_moving:
+            if self.is_clipping and self.edit_p_list:   # NOTE: clipping has highest priority
+                self.temp_item.p_list = alg.clip(self.temp_item.last_p_list,\
+                    min(self.edit_p_list[0][0], x), min(self.edit_p_list[0][1], y),\
+                    max(self.edit_p_list[0][0], x), max(self.edit_p_list[0][1], y),\
+                self.temp_algorithm)
+                print(self.temp_item.p_list)
+            elif self.is_moving:
                 self.temp_item.p_list = alg.translate(self.temp_item.last_p_list, x - self.edit_p_list[0][0], y - self.edit_p_list[0][1])
             elif self.is_scaling:
                 temp_sx = (x-self.edit_p_list[2][0]-self.edit_p_list[0][0])/self.edit_p_list[1][0]
@@ -210,7 +238,9 @@ class MyCanvas(QGraphicsView):
                 else:
                     self.temp_item.p_list.append( [x, y] )
         elif self.status == 'select':
-            if self.is_moving:
+            if self.is_clipping and self.edit_p_list:
+                self.edit_p_list = []
+            elif self.is_moving:
                 self.is_moving = False
                 self.edit_p_list = []
             elif self.is_scaling:
@@ -235,16 +265,16 @@ class MyCanvas(QGraphicsView):
 
     # Edit
     def mycanvas_translation(self, dx, dy):
-        self.temp_item = self.item_dict[self.selected_id]
+        assert(self.status == 'select')
         self.temp_item.p_list = alg.translate(self.temp_item.p_list, dx, dy)
 
     def mycanvas_rotation(self, x, y, r):
-        self.temp_item = self.item_dict[self.selected_id]
+        assert(self.status == 'select')
         self.temp_item.p_list = alg.rotate(self.temp_item.p_list, x, y, -r)
         # r is inverted since y is inverted
     
     def mycanvas_scaling(self, x, y, s):
-        self.temp_item = self.item_dict[self.selected_id]
+        assert(self.status == 'select')
         self.temp_item.p_list = alg.scale(self.temp_item.p_list, x, y, s)
 
 class MyItem(QGraphicsItem):
@@ -278,6 +308,8 @@ class MyItem(QGraphicsItem):
         self.bl_RectF = QRectF()
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
+        if not self.p_list:
+            return
         if self.item_type == 'line':
             item_pixels = alg.draw_line(self.p_list, self.algorithm)
             for p in item_pixels:
@@ -309,6 +341,8 @@ class MyItem(QGraphicsItem):
         # TODO:    ??
 
     def boundingRect(self) -> QRectF:
+        if not self.p_list:
+            return QRectF()
         if self.item_type == 'line':
             x0, y0 = self.p_list[0]
             x1, y1 = self.p_list[1]
@@ -495,6 +529,7 @@ class MainWindow(QMainWindow):
         translate_act.triggered.connect(self.translate_action)
         rotate_act.triggered.connect(self.rotate_action)
         scale_act.triggered.connect(self.scale_action)
+        clip_cohen_sutherland_act.triggered.connect(self.clip_cohen_sutherland_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -544,7 +579,7 @@ class MainWindow(QMainWindow):
             self.scene.clear()
             # reset canvas
             self.canvas_widget.item_dict = {}
-            self.canvas_widget.selected_id = ''
+            self.canvas_widget.clear_selection()
             self.canvas_widget.status = ''
             self.canvas_widget.temp_algorithm = ''
             self.canvas_widget.temp_id = ''
@@ -567,53 +602,53 @@ class MainWindow(QMainWindow):
 
     # Draw action
     def line_naive_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('Naive')
         self.statusBar().showMessage('Naive算法绘制线段')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def line_dda_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('DDA')
         self.statusBar().showMessage('DDA算法绘制线段')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def line_bresenham_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('Bresenham')
         self.statusBar().showMessage('Bresenham算法绘制线段')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def polygon_dda_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_polygon('DDA')
         self.statusBar().showMessage('DDA算法绘制多边形，右键结束')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def polygon_bresenham_action(self):
-        self.canvas_widget.start_draw_polygon('Bresenham')
-        self.statusBar().showMessage('Bresenham算法绘制多边形，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
+        self.canvas_widget.start_draw_polygon('Bresenham')
+        self.statusBar().showMessage('Bresenham算法绘制多边形，右键结束')
 
 
     def ellipse_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_ellipse()
         self.statusBar().showMessage('绘制椭圆')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def curve_bezier_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_curve('Bezier')
         self.statusBar().showMessage('Bezier曲线绘制,单击添加控制点，右键结束')
-        self.list_widget.clearSelection()
-        self.canvas_widget.clear_selection()
 
     def curve_b_spline_action(self):
-        self.canvas_widget.start_draw_curve('B-spline')
-        self.statusBar().showMessage('B-spline曲线绘制,单击添加控制点，右键结束')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
+        self.canvas_widget.start_draw_curve('B-spline')
+        self.statusBar().showMessage('B-spline曲线绘制,单击添加控制点，右键结束')
 
     # Edit action
     def translate_action(self):
@@ -632,11 +667,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage('Translation canceled')
 
     def rotate_action(self):
-        temp_id = self.canvas_widget.selected_id
-        if temp_id == '':    # item not selected
+        temp_selected_id = self.canvas_widget.selected_id
+        if temp_selected_id == '':    # item not selected
             self.statusBar().showMessage('Please select item in list widget first!')
             return
-        temp_item = self.canvas_widget.item_dict[temp_id]
+        temp_item = self.canvas_widget.item_dict[temp_selected_id]
         if temp_item.item_type == 'ellipse':
             self.statusBar().showMessage('ellipse should not be rotated!')
             return
@@ -655,11 +690,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage('Rotation canceled')
 
     def scale_action(self):
-        temp_id = self.canvas_widget.selected_id
-        if temp_id == '':    # item not selected
+        temp_selected_id = self.canvas_widget.selected_id
+        if temp_selected_id == '':    # item not selected
             self.statusBar().showMessage('Please select item in list widget first!')
             return
-        temp_item = self.canvas_widget.item_dict[temp_id]
+        temp_item = self.canvas_widget.item_dict[temp_selected_id]
         scalePara = {}
         RectF_center_x = int(temp_item.bound_Rect.center().x())
         RectF_center_y = int(temp_item.bound_Rect.center().y())
@@ -673,6 +708,18 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f'Scaling x = {temp_x}, y = {temp_y}, s = {temp_s} succeed')
         else:
             self.statusBar().showMessage('Scaling canceled')
+
+    def clip_cohen_sutherland_action(self):
+        temp_selected_id = self.canvas_widget.selected_id
+        if temp_selected_id == '':   # item not selected
+            self.statusBar().showMessage('Please select item in list widget first!')
+            return
+        temp_item = self.canvas_widget.item_dict[temp_selected_id]
+        if temp_item.item_type != 'line':   # selected item invalid
+            self.statusBar().showMessage('Only segment line can be clipped!')
+            return
+        self.canvas_widget.start_clip('Cohen-Sutherland')
+        self.statusBar().showMessage('Start clip using Cohen-Sutherland algorithm')
     # TODO: realise other action funcs
 
     # Help menu actions
