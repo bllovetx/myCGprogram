@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+#############################################
+# This is the Gui part of MyCGProgram       # 
+# Updated June 2021                         #
+# By zxzq(https://zxzq.me)                  #
+# See my github for detail of this program  #
+# https://github.com/bllovetx/myCGprogram   #
+#############################################
+
 import sys
 
 from PyQt5 import QtWidgets
@@ -70,6 +78,10 @@ class MyCanvas(QGraphicsView):
     def start_draw_curve(self, algorithm):
         self.status = 'curve'
         self.temp_algorithm = algorithm
+        self.start_draw()
+
+    def start_draw_arbitrary(self):
+        self.status = 'arbitrary'
         self.start_draw()
     
     def start_clip(self, algorithm):
@@ -141,6 +153,11 @@ class MyCanvas(QGraphicsView):
                 self.main_window.statusBar().showMessage(f'drawing curve by {self.temp_algorithm}')
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color, self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
+        elif self.status == 'arbitrary':
+            self.is_drawing = True
+            self.main_window.statusBar().showMessage('drawing arbitrarily')
+            self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.pen_color)
+            self.scene().addItem(self.temp_item)
         elif self.status == 'select':
             temp_RectF = self.temp_item.bound_Rect
             if self.is_clipping:    # NOTE:highest priority!!
@@ -185,6 +202,8 @@ class MyCanvas(QGraphicsView):
             self.temp_item.p_list[1] = [x, y]
         elif self.status == 'curve' and self.is_drawing:
             self.temp_item.p_list[-1] = [x, y]
+        elif self.status == 'arbitrary' and self.is_drawing:
+            self.temp_item.p_list.append([x, y])
         elif self.status == 'select':
             if self.is_clipping and self.edit_p_list:   # NOTE: clipping has highest priority
                 self.temp_item.p_list = alg.clip(self.temp_item.last_p_list,\
@@ -236,6 +255,11 @@ class MyCanvas(QGraphicsView):
                     self.finish_draw()
                 else:
                     self.temp_item.p_list.append( [x, y] )
+        elif self.status == 'arbitrary':
+            self.is_drawing = False
+            self.item_dict[self.temp_id] = self.temp_item
+            self.list_widget.addItem(self.temp_id)
+            self.finish_draw()
         elif self.status == 'select':
             if self.is_clipping and self.edit_p_list:
                 self.edit_p_list = []
@@ -374,6 +398,32 @@ class MyItem(QGraphicsItem):
                     painter.drawPoint(*p)
             if self.selected:
                 self.myDrawBound(painter)
+        elif self.item_type == 'arbitrary':
+            item_pixels = []
+            p_list_len = len(self.p_list)  
+            if p_list_len < 2:
+                item_pixels = self.p_list
+            else:
+                for i in range(p_list_len - 1):
+                    item_pixels += alg.draw_line(self.p_list[i:i+2], 'Bresenham')
+            for p in item_pixels:
+                painter.setPen(self.item_pen_color)
+                painter.drawPoint(*p)
+            if self.last_p_list:    # is Editting
+                last_item_pixels = []
+                last_p_list_len = len(self.last_p_list)
+                if last_p_list_len < 2:
+                    last_item_pixels = self.p_list
+                else:
+                    for i in range(last_p_list_len - 1):
+                        last_item_pixels += alg.draw_line(self.last_p_list[i:i+2], 'Bresenham')
+                for p in last_item_pixels:
+                    last_pen_color = QColor(self.item_pen_color)
+                    last_pen_color.setAlpha(self.last_alpha)
+                    painter.setPen(last_pen_color)
+                    painter.drawPoint(*p)
+            if self.selected:
+                self.myDrawBound(painter)
         # TODO:    ??
 
     def boundingRect(self) -> QRectF:
@@ -421,6 +471,21 @@ class MyItem(QGraphicsItem):
                 (xmin, ymin) = all_pixels[0]
                 (xmax, ymax) = all_pixels[0]
             for (x, y) in all_pixels:
+                if x < xmin:
+                    xmin = x
+                if x > xmax:
+                    xmax = x
+                if y < ymin:
+                    ymin = y
+                if y > ymax:
+                    ymax = y
+            w = xmax - xmin
+            h = ymax - ymin
+            return QRectF(xmin - 1, ymin - 1, w + 2, h + 2)
+        elif self.item_type == 'arbitrary':
+            (xmin, ymin) = self.p_list[0]
+            (xmax, ymax) = self.p_list[0]
+            for (x, y) in self.p_list:
                 if x < xmin:
                     xmin = x
                 if x > xmax:
@@ -534,6 +599,7 @@ class MainWindow(QMainWindow):
         curve_menu = draw_menu.addMenu('曲线')
         curve_bezier_act = curve_menu.addAction('Bezier')
         curve_b_spline_act = curve_menu.addAction('B-spline')
+        arbitrary_act = draw_menu.addAction('Arbitrary')
         edit_menu = menubar.addMenu('&Edit')
         translate_act = edit_menu.addAction('平移')
         rotate_act = edit_menu.addAction('旋转')
@@ -563,6 +629,7 @@ class MainWindow(QMainWindow):
         ## curve funcs
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
         curve_b_spline_act.triggered.connect(self.curve_b_spline_action)
+        arbitrary_act.triggered.connect(self.arbitrary_action)
         # Edit
         translate_act.triggered.connect(self.translate_action)
         rotate_act.triggered.connect(self.rotate_action)
@@ -688,6 +755,11 @@ class MainWindow(QMainWindow):
         self.canvas_widget.start_draw_curve('B-spline')
         self.statusBar().showMessage('B-spline曲线绘制,单击添加控制点，右键结束')
 
+    def arbitrary_action(self):
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
+        self.canvas_widget.start_draw_arbitrary()
+        self.statusBar().showMessage('自由绘制')
     # Edit action
     def translate_action(self):
         if self.canvas_widget.selected_id == '':    # item not selected

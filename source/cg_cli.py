@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+#############################################
+# This is the Cli part of MyCGProgram       # 
+# Updated June 2021                         #
+# By zxzq(https://zxzq.me)                  #
+# See my github for detail of this program  #
+# https://github.com/bllovetx/myCGprogram   #
+#############################################
+
 import sys
 import os
 import cg_algorithms as alg

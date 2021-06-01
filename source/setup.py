@@ -1,3 +1,13 @@
+#############################################
+# This is the set up script in order to     #
+# compile this python program to executable #
+# with py2exe.                              #   
+# Updated June 2021                         #
+# By zxzq(https://zxzq.me)                  #
+# See my github for detail of this program  #
+# https://github.com/bllovetx/myCGprogram   #
+#############################################
+
 from distutils.core import setup
 import py2exe
 from glob import glob

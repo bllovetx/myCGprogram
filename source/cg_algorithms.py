@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+#############################################
+# This is the Algorithm part of MyCGProgram # 
+# Updated June 2021                         #
+# By zxzq(https://zxzq.me)                  #
+# See my github for detail of this program  #
+# https://github.com/bllovetx/myCGprogram   #
+#############################################
+
+
 # 本文件只允许依赖math库
 import math
 
