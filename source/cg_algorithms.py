@@ -99,6 +99,8 @@ def draw_line(p_list, algorithm):
     :param algorithm: (string) 绘制使用的算法，包括'DDA'和'Bresenham'，此处的'Naive'仅作为示例，测试时不会出现
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
     """
+    if not p_list:
+        return []
     x0, y0 = p_list[0]
     x1, y1 = p_list[1]
     result = []
@@ -319,7 +321,7 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
         endCode   = 0b0000
         if start[0] < x_min:
             startCode |= lefCode
-        elif start[0] > x_min:
+        elif start[0] > x_max:
             startCode |= rigCode
         if start[1] < y_min:
             startCode |= botCode
@@ -327,7 +329,7 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
             startCode |= topCode
         if end[0] < x_min:
             endCode |= lefCode
-        elif end[0] > x_min:
+        elif end[0] > x_max:
             endCode |= rigCode
         if end[1] < y_min:
             endCode |= botCode
@@ -362,7 +364,6 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
                 t_list.append(ty_max)
         assert(t_list)
         t_intersect = min(t_list)
-        print(t_intersect)
         intP = [int(outP[0]+t_intersect*delta_x), int(outP[1]+t_intersect*delta_y)]
         return clip([intP, tarP], x_min, y_min, x_max, y_max, algorithm)
         
