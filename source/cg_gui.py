@@ -710,56 +710,56 @@ class MainWindow(QMainWindow):
 
     # Draw action
     def line_naive_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('Naive')
         self.statusBar().showMessage('Naive算法绘制线段')
 
     def line_dda_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('DDA')
         self.statusBar().showMessage('DDA算法绘制线段')
 
     def line_bresenham_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_line('Bresenham')
         self.statusBar().showMessage('Bresenham算法绘制线段')
 
     def polygon_dda_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_polygon('DDA')
         self.statusBar().showMessage('DDA算法绘制多边形，右键结束')
 
     def polygon_bresenham_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_polygon('Bresenham')
         self.statusBar().showMessage('Bresenham算法绘制多边形，右键结束')
 
 
     def ellipse_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_ellipse()
         self.statusBar().showMessage('绘制椭圆')
 
     def curve_bezier_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_curve('Bezier')
         self.statusBar().showMessage('Bezier曲线绘制,单击添加控制点，右键结束')
 
     def curve_b_spline_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_curve('B-spline')
         self.statusBar().showMessage('B-spline曲线绘制,单击添加控制点，右键结束')
 
     def arbitrary_action(self):
-        self.list_widget.clearSelection()
+        myListClearSelection(self.list_widget)
         self.canvas_widget.clear_selection()
         self.canvas_widget.start_draw_arbitrary()
         self.statusBar().showMessage('自由绘制')
@@ -1267,6 +1267,15 @@ class ScalingDialog(QDialog):
         self.para["confirm"] = False
         self.close()
 
+
+def myListClearSelection(myListWidget:QListWidget):
+    """
+    QListWidget.clearSelection do not change current item
+    and current Text consequently, which cause 'currentTextChanged'
+    not triggered when reselecting the same item!
+    """
+    myListWidget.clearSelection()
+    myListWidget.setCurrentItem(None)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
