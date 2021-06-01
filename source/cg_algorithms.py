@@ -322,9 +322,8 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
     assert(x_min<=x_max and y_min<=y_max)
     if not p_list:
         return p_list
+    (start, end) = p_list
     if algorithm == 'Cohen-Sutherland':
-        start = p_list[0]
-        end = p_list[1]
         # region: Coding EndPoint
         startCode = 0b0000
         endCode   = 0b0000
@@ -377,4 +376,28 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
         return clip([intP, tarP], x_min, y_min, x_max, y_max, algorithm)
         
     elif algorithm == 'Liang-Barsky':
-        pass
+        p = [0, 0, 0, 0]
+        p[0] = - (end[0] - start[0])
+        p[1] = - p[0]
+        p[2] = - (end[1] - start[1])
+        p[3] = - p[2]
+        q = [0, 0, 0, 0]
+        q[0] = start[0] - x_min
+        q[1] = x_max - start[0]
+        q[2] = start[1] - y_min
+        q[3] = y_max - start[1]
+        for i in range(4):
+            if (not p[i]) and (q[i] < 0):   # parralell and start is outside
+                return []   # trival reject
+        u1 = 0
+        u2 = 1
+        for i in range(4):
+            if p[i] < 0:
+                u1 = max(u1, q[i]/p[i])
+            elif p[i] > 0:
+                u2 = min(u2, q[i]/p[i])
+        if u1 > u2:
+            return []   # reject
+        return [[int(start[0] + u1*p[1]), int(start[1] + u1*p[3])],\
+                [int(start[0] + u2*p[1]), int(start[1] + u2*p[3])]]
+

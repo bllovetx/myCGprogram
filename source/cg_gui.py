@@ -635,6 +635,7 @@ class MainWindow(QMainWindow):
         rotate_act.triggered.connect(self.rotate_action)
         scale_act.triggered.connect(self.scale_action)
         clip_cohen_sutherland_act.triggered.connect(self.clip_cohen_sutherland_action)
+        clip_liang_barsky_act.triggered.connect(self.clip_liang_barsky_action)
         # TODO: other func link
             # select funcs
         # Help actions
@@ -830,6 +831,18 @@ class MainWindow(QMainWindow):
             return
         self.canvas_widget.start_clip('Cohen-Sutherland')
         self.statusBar().showMessage('Start clip using Cohen-Sutherland algorithm')
+
+    def clip_liang_barsky_action(self):
+        temp_selected_id = self.canvas_widget.selected_id
+        if temp_selected_id == '':   # item not selected
+            self.statusBar().showMessage('Please select item in list widget first!')
+            return
+        temp_item = self.canvas_widget.item_dict[temp_selected_id]
+        if temp_item.item_type != 'line':   # selected item invalid
+            self.statusBar().showMessage('Only segment line can be clipped!')
+            return
+        self.canvas_widget.start_clip('Liang-Barsky')
+        self.statusBar().showMessage('Start clip using Liang-Barsky algorithm')
     # TODO: realise other action funcs
 
     # Help menu actions
