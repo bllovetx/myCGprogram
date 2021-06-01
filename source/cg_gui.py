@@ -180,12 +180,12 @@ class MyCanvas(QGraphicsView):
                 self.temp_item.last_p_list = self.temp_item.p_list
                 temp_center_x = temp_RectF.center().x()
                 temp_center_y = temp_RectF.center().y()
-                temp_half_w = temp_RectF.width()/2
-                temp_half_h = temp_RectF.height()/2
-                temp_dis_x = (x-temp_center_x-temp_half_w) if (x>temp_center_x) else (x-temp_center_x+temp_half_w)
-                temp_dis_y = (y-temp_center_y-temp_half_h) if (y>temp_center_y) else (y-temp_center_y+temp_half_h) 
-                # [centerP, halfWH, startReleventDisplace]
-                self.edit_p_list = [[temp_center_x, temp_center_y], [temp_half_w, temp_half_h], [temp_dis_x, temp_dis_y]]
+                temp_signed_half_w = temp_RectF.width()/2  if (x>temp_center_x) else -temp_RectF.width()/2 
+                temp_signed_half_h = temp_RectF.height()/2 if (y>temp_center_y) else -temp_RectF.height()/2
+                temp_dis_x = (x-temp_center_x-temp_signed_half_w)
+                temp_dis_y = (y-temp_center_y-temp_signed_half_h) 
+                # [centerP, signed_halfWH, startReleventDisplace]
+                self.edit_p_list = [[temp_center_x, temp_center_y], [temp_signed_half_w, temp_signed_half_h], [temp_dis_x, temp_dis_y]]
         # TODO: other status 
         self.updateScene([self.sceneRect()])
         super().mousePressEvent(event)
