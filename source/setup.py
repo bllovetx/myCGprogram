@@ -6,6 +6,8 @@
 # By zxzq(https://zxzq.me)                  #
 # See my github for detail of this program  #
 # https://github.com/bllovetx/myCGprogram   #
+#                                           #
+# usage:python setup.py py2exe              #
 #############################################
 
 from distutils.core import setup
