@@ -45,19 +45,19 @@ if __name__ == '__main__':
                     if item_type == 'line':
                         pixels = alg.draw_line(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[height - 1 - int(y), int(x)] = color
+                            canvas[int(y), int(x)] = color
                     elif item_type == 'polygon':
                         pixels = alg.draw_polygon(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[height - 1 - int(y), int(x)] = color
+                            canvas[int(y), int(x)] = color
                     elif item_type == 'ellipse':
                         pixels = alg.draw_ellipse(p_list)
                         for x, y in pixels:
-                            canvas[height - 1 - int(y), int(x)] = color
+                            canvas[int(y), int(x)] = color
                     elif item_type == 'curve':
                         pixels = alg.draw_curve(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[height - 1 - int(y), int(x)] = color
+                            canvas[int(y), int(x)] = color
                     else:
                         assert False, "Wrong Type?"
                 Image.fromarray(canvas).save(os.path.join(output_dir, save_name + '.bmp'), 'bmp')
@@ -113,7 +113,7 @@ if __name__ == '__main__':
                 y = int(line[3])
                 r = int(line[4])
                 assert (item_dict[item_id][0] != 'ellipse'), "ellipse can't be rotated"
-                item_dict[item_id][1] = alg.rotate(item_dict[item_id][1], x, y, r)
+                item_dict[item_id][1] = alg.rotate(item_dict[item_id][1], x, y, -r)
             elif line[0] == 'scale':
                 item_id = line[1]
                 x = int(line[2])
