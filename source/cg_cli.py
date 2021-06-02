@@ -34,6 +34,9 @@ if __name__ == '__main__':
                 width = int(line[1])
                 height = int(line[2])
                 item_dict = {}
+                assert (width<=1000 and width>=100\
+                    and height<=1000 and height>=100),\
+                    "size not valid"
             elif line[0] == 'saveCanvas':
                 save_name = line[1]
                 canvas = np.zeros([height, width, 3], np.uint8)
@@ -42,13 +45,21 @@ if __name__ == '__main__':
                     if item_type == 'line':
                         pixels = alg.draw_line(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[height - 1 - y, x] = color
+                            canvas[height - 1 - int(y), int(x)] = color
                     elif item_type == 'polygon':
-                        pass
+                        pixels = alg.draw_polygon(p_list, algorithm)
+                        for x, y in pixels:
+                            canvas[height - 1 - int(y), int(x)] = color
                     elif item_type == 'ellipse':
-                        pass
+                        pixels = alg.draw_ellipse(p_list)
+                        for x, y in pixels:
+                            canvas[height - 1 - int(y), int(x)] = color
                     elif item_type == 'curve':
-                        pass
+                        pixels = alg.draw_curve(p_list, algorithm)
+                        for x, y in pixels:
+                            canvas[height - 1 - int(y), int(x)] = color
+                    else:
+                        assert False, "Wrong Type?"
                 Image.fromarray(canvas).save(os.path.join(output_dir, save_name + '.bmp'), 'bmp')
             elif line[0] == 'setColor':
                 pen_color[0] = int(line[1])
@@ -62,6 +73,83 @@ if __name__ == '__main__':
                 y1 = int(line[5])
                 algorithm = line[6]
                 item_dict[item_id] = ['line', [[x0, y0], [x1, y1]], algorithm, np.array(pen_color)]
+            elif line[0] == 'drawPolygon':
+                item_id = line[1]
+                vertexParaNum = len(line) - 3
+                assert not(vertexParaNum&0b1), "Missing Parameter"
+                p_list = []
+                for vertexIndex in range(int(vertexParaNum/2)):
+                    p_list.append([int(line[2+2*vertexIndex]),\
+                                   int(line[3+2*vertexIndex])]\
+                    )
+                algorithm = line[-1]
+                item_dict[item_id] = ['polygon', p_list, algorithm, np.array(pen_color)]
+            elif line[0] == 'drawEllipse':
+                item_id = line[1]
+                x0 = int(line[2])
+                y0 = int(line[3])
+                x1 = int(line[4])
+                y1 = int(line[5])
+                item_dict[item_id] = ['ellipse', [[x0, y0], [x1, y1]], '', np.array(pen_color)]
+            elif line[0] == 'drawCurve':
+                item_id = line[1]
+                vertexParaNum = len(line) - 3
+                assert not(vertexParaNum&0b1), "Missing Parameter"
+                p_list = []
+                for vertexIndex in range(int(vertexParaNum/2)):
+                    p_list.append([int(line[2+2*vertexIndex]),\
+                                   int(line[3+2*vertexIndex])]\
+                    )
+                algorithm = line[-1]
+                item_dict[item_id] = ['curve', p_list, algorithm, np.array(pen_color)]
+            elif line[0] == 'translate':
+                item_id = line[1]
+                dx = int(line[2])
+                dy = int(line[3])
+                item_dict[item_id][1] = alg.translate(item_dict[item_id][1], dx, dy)
+            elif line[0] == 'rotate':
+                item_id = line[1]
+                x = int(line[2])
+                y = int(line[3])
+                r = int(line[4])
+                assert (item_dict[item_id][0] != 'ellipse'), "ellipse can't be rotated"
+                item_dict[item_id][1] = alg.rotate(item_dict[item_id][1], x, y, r)
+            elif line[0] == 'scale':
+                item_id = line[1]
+                x = int(line[2])
+                y = int(line[3])
+                s = float(line[4])
+                item_dict[item_id][1] = alg.scale(item_dict[item_id][1], x, y, s)
+            elif line[0] == 'clip':
+                item_id = line[1]
+                assert (item_dict[item_id][0] == 'line'), "only line can be clipped"
+                x0 = int(line[2])
+                y0 = int(line[3])
+                x1 = int(line[4])
+                y1 = int(line[5])
+                (xmin, xmax) = (x0, x1) if (x0 < x1) else (x1, x0)
+                (ymin, ymax) = (y0, y1) if (y0 < y1) else (y1, y0)
+                algorithm = line[6]
+                item_dict[item_id][1] = alg.clip(item_dict[item_id][1],\
+                    xmin, ymin, xmax, ymax, algorithm)
+            elif line[0] == '--help' or line[0] == '-h':
+                print("""
+                resetCanvas width height
+                saveCanvas name
+                setColor R G B
+                drawLine id x0 y0 x1 y1 algorithm
+                drawPolygon id x0 y0 x1 y1 x2 y2 ... algorithm
+                drawEllipse id x0 y0 x1 x1
+                drawCurve id x0 y0 x1 y1 x2 y2 ... algorithm
+                translate id dx dy
+                rotate id x y r
+                scale id x y s
+                clip id x0 y0 x1 y1 algorithm
+                """)
+            # add other command here
+            else:
+                assert False, f"{line[0]} is not a valid command, see '--help'"
+
             ...
 
             line = fp.readline()
